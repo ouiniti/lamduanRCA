@@ -2,8 +2,8 @@
 <html lang="th">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>5-Tier Diagram Builder | เครื่องมือสร้างแผนผังวิเคราะห์ปัจจัยร่วม</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>5-Tier RCA Diagram Builder | เครื่องมือวิเคราะห์ปัจจัยร่วมพร้อมคำถามชี้นำ</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -11,7 +11,7 @@
 :root{
   --bg:#f4f6f4; --panel:#ffffff; --text:#1f2a1f; --muted:#6b7a6b;
   --border:#c9d4c9; --green:#3e7d3e; --green-dark:#2e5f2e; --green-soft:#eef5ee;
-  --danger:#c62828; --shadow:0 2px 8px rgba(20,40,20,.08);
+  --danger:#c62828; --warn:#b3541e; --info:#1565c0; --shadow:0 2px 8px rgba(20,40,20,.08);
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
@@ -24,188 +24,315 @@
   --border:#334133; --shadow:0 2px 8px rgba(0,0,0,.45);
 }
 *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
-body{
-  margin:0; background:var(--bg); color:var(--text);
-  font-family:'Sarabun','Noto Sans Thai',Tahoma,system-ui,sans-serif; font-size:15px;
-}
+body{margin:0; background:var(--bg); color:var(--text);
+  font-family:'Sarabun','Noto Sans Thai',Tahoma,system-ui,sans-serif; font-size:15px;}
 header.app{padding:12px 14px 4px; text-align:center;}
 header.app h1{margin:0; font-size:1.1rem; font-weight:700;}
 header.app p{margin:3px 0 0; color:var(--muted); font-size:.8rem;}
-.guide-link{
-  display:inline-flex; align-items:center; gap:6px; margin-top:6px;
+.guide-link{display:inline-flex; align-items:center; gap:6px; margin-top:6px;
   background:var(--green-soft); color:var(--green-dark); border:1px solid var(--green);
   border-radius:999px; padding:3px 12px; font-size:.78rem; font-weight:600; cursor:pointer;
-  font-family:inherit;
-}
-.toolbar{
-  display:flex; flex-wrap:wrap; gap:8px; justify-content:center; align-items:center;
+  font-family:inherit;}
+.toolbar{display:flex; flex-wrap:wrap; gap:8px; justify-content:center; align-items:center;
   padding:8px 10px; position:sticky; top:0; z-index:30; background:var(--bg);
-  border-bottom:1px solid var(--border);
-}
-.toolbar input{
-  flex:1 1 260px; min-width:200px; font-family:inherit; font-size:.88rem;
+  border-bottom:1px solid var(--border);}
+.toolbar input{flex:1 1 220px; min-width:180px; font-family:inherit; font-size:.88rem;
   padding:8px 12px; border-radius:10px; border:1px solid var(--border);
-  background:var(--panel); color:var(--text);
-}
-.toolbar button{
-  font-family:inherit; font-size:.82rem; font-weight:600;
+  background:var(--panel); color:var(--text);}
+.toolbar button{font-family:inherit; font-size:.82rem; font-weight:600;
   padding:8px 12px; border-radius:10px; border:1px solid var(--border);
-  background:var(--panel); color:var(--text); cursor:pointer; box-shadow:var(--shadow);
-}
+  background:var(--panel); color:var(--text); cursor:pointer; box-shadow:var(--shadow);}
 .toolbar button:active{transform:scale(.97);}
 .toolbar button.primary{background:#2e7d32; border-color:#2e7d32; color:#fff;}
+.toolbar button.wizard{background:#7c3aed; border-color:#7c3aed; color:#fff;}
+.toolbar button.meta-btn{background:#1565c0; border-color:#1565c0; color:#fff;}
 .toolbar button.link-on{background:#7c3aed; border-color:#7c3aed; color:#fff;}
 .toolbar button.danger{color:var(--danger); border-color:var(--danger);}
 .tips{max-width:1100px; margin:0 auto; padding:6px 14px 8px; color:var(--muted); font-size:.75rem; line-height:1.6;}
-.board-scroll{overflow-x:auto; padding:0 8px 60px;}
-/* ---------- table board ---------- */
-#board{
-  position:relative; margin:0 auto; width:max-content; min-width:min(100%,680px); max-width:1100px;
-  background:#ffffff; color:#1f2a1f;
-  border:2px solid #111; 
-}
-#board .board-case{
-  text-align:center; font-weight:700; font-size:.95rem; padding:8px 10px;
-  border-bottom:2px solid #111; min-height:2.2em; color:#1f2a1f; background:#fff;
-}
-#board .board-case:empty{display:none;}
+/* ---------- metadata panel ---------- */
+.meta-panel{max-width:1100px; margin:0 auto 10px; padding:14px 16px;
+  background:var(--panel); border:1px solid var(--border); border-radius:14px;
+  box-shadow:var(--shadow); display:none;}
+.meta-panel.open{display:block;}
+.meta-panel h3{margin:0 0 10px; font-size:.95rem; color:var(--green-dark);
+  display:flex; justify-content:space-between; align-items:center;}
+.meta-panel h3 button{background:transparent; border:none; color:var(--muted); cursor:pointer;
+  font-size:.8rem; font-family:inherit;}
+.meta-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:10px;}
+.meta-grid label{display:flex; flex-direction:column; gap:4px; font-size:.78rem; color:var(--muted);}
+.meta-grid input, .meta-grid select{font-family:inherit; font-size:.85rem;
+  padding:7px 10px; border:1px solid var(--border); border-radius:8px;
+  background:var(--panel); color:var(--text);}
+.meta-team{grid-column:1/-1; border-top:1px dashed var(--border); padding-top:10px; margin-top:4px;}
+.meta-team-hdr{display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; font-size:.82rem; font-weight:600;}
+.meta-team-hdr button{font-family:inherit; font-size:.75rem; padding:4px 10px; border-radius:8px;
+  border:1px dashed var(--green); background:var(--green-soft); color:var(--green-dark); cursor:pointer;}
+.team-row{display:grid; grid-template-columns:1fr 1fr auto; gap:8px; margin-bottom:6px;}
+.team-row input{font-family:inherit; font-size:.82rem; padding:6px 8px;
+  border:1px solid var(--border); border-radius:8px; background:var(--panel); color:var(--text);}
+.team-row button{background:transparent; border:none; color:var(--danger); cursor:pointer; font-size:1rem;}
+.method-badge{display:inline-block; padding:2px 8px; border-radius:999px;
+  background:#fff3e0; color:#b3541e; font-size:.75rem; font-weight:600; margin-left:6px;}
+/* ---------- board ---------- */
+.board-scroll{overflow-x:auto; padding:0 8px 20px;}
+#board{position:relative; margin:0 auto; width:max-content; min-width:min(100%,680px); max-width:1100px;
+  background:#ffffff; color:#1f2a1f; border:2px solid #111;}
+#board .board-hdr{text-align:center; padding:8px 10px 4px; border-bottom:2px solid #111; background:#fff;}
+#board .board-hdr .b-title{font-weight:700; font-size:1rem; color:#1f2a1f;}
+#board .board-hdr .b-meta{font-size:.78rem; color:#475569; margin-top:2px;}
+#board .board-hdr:empty, #board .board-hdr .b-title:empty, #board .board-hdr .b-meta:empty{display:none;}
 #wires{position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:3;}
 .rowT{display:flex; border-bottom:2px solid #111; position:relative; z-index:2;}
 .rowT:last-child{border-bottom:none;}
-.rowT .label{
-  flex:0 0 118px; background:#ececec; border-right:2px solid #111;
+.rowT .label{flex:0 0 118px; background:#ececec; border-right:2px solid #111;
   display:flex; flex-direction:column; justify-content:center; padding:10px 6px;
-  text-align:center; position:relative;
-}
+  text-align:center; position:relative;}
 .rowT .label .tname{font-weight:700; font-size:.82rem; line-height:1.3; outline:none;}
 .rowT .label .tsub{font-size:.7rem; color:#555; margin-top:2px; outline:none;}
-.rowT .label .letter{
-  position:absolute; left:8px; bottom:6px; font-weight:800; font-size:1.05rem; color:#111;
-}
+.rowT .label .letter{position:absolute; left:8px; bottom:6px; font-weight:800; font-size:1.05rem; color:#111;}
+.rowT .label .qbtn{position:absolute; right:6px; top:6px; background:#fff3c4; border:1px solid #d4a017;
+  color:#7a5a00; border-radius:999px; padding:2px 6px; font-size:.65rem; cursor:pointer; line-height:1.2;}
 .rowT .cell{flex:1; display:flex; padding:10px;}
-/* categories inside a tier row */
 .cats{display:flex; flex:1; gap:0;}
-.cat{
-  flex:1; display:flex; flex-direction:column; gap:10px; padding:0 10px;
-  border-right:1.5px dashed #9db89d;
-}
+.cat{flex:1; display:flex; flex-direction:column; gap:10px; padding:0 10px;
+  border-right:1.5px dashed #9db89d;}
 .cat:last-child{border-right:none;}
-.cat .cname{
-  font-weight:700; font-size:.85rem; color:#1f2a1f; outline:none; min-height:1.1em;
-  line-height:1.25;
-}
-/* boxes */
-.node{
-  position:relative; border:2px solid var(--green); border-radius:14px;
+.cat .cname{font-weight:700; font-size:.85rem; color:#1f2a1f; min-height:1.1em;
+  line-height:1.25; display:flex; align-items:center; gap:6px; flex-wrap:wrap;}
+.cat .cname .ctxt{outline:none; flex:1; min-width:80px;}
+.cat .qbtn{background:#fff3c4; border:1px solid #d4a017; color:#7a5a00;
+  border-radius:999px; padding:1px 8px; font-size:.7rem; cursor:pointer; font-family:inherit;}
+.node{position:relative; border:2px solid var(--green); border-radius:14px;
   background:#fff; padding:9px 11px; font-size:.84rem; line-height:1.45;
-  cursor:text; min-height:52px; color:#1f2a1f;
-}
+  cursor:text; min-height:52px; color:#1f2a1f;}
 .node .txt{outline:none; min-height:32px; white-space:pre-wrap; word-break:break-word;}
 .node .txt:empty::before{content:attr(data-ph); color:#9fb39f;}
 .node.selected{box-shadow:0 0 0 3px rgba(46,125,50,.35);}
 .node.link-src{box-shadow:0 0 0 3px rgba(124,58,237,.55);}
 .node.linked-peer{outline:2px dashed var(--danger); outline-offset:3px;}
-.node .del{
-  position:absolute; top:-10px; right:-10px; width:24px; height:24px;
+.node .del{position:absolute; top:-10px; right:-10px; width:24px; height:24px;
   border-radius:50%; border:none; background:var(--danger); color:#fff;
-  font-size:14px; line-height:1; cursor:pointer; display:none; z-index:5;
-}
+  font-size:14px; line-height:1; cursor:pointer; display:none; z-index:5;}
 .node.selected .del{display:block;}
-.addbox{
-  align-self:flex-start; width:56px; height:44px; border-radius:12px;
+.addbox{align-self:flex-start; width:56px; height:44px; border-radius:12px;
   border:2px dashed #6f9a6f; background:#f1f7f1; color:#2e5f2e;
-  font-size:20px; font-weight:700; cursor:pointer;
-}
+  font-size:20px; font-weight:700; cursor:pointer;}
 .addbox:hover{border-color:var(--green-dark);}
-/* row A: horizontal step flow with arrows */
 .flowA{display:flex; flex-wrap:wrap; align-items:center; gap:10px; flex:1;}
 .flowA .node{flex:0 1 200px; min-width:150px;}
 .flowA .arrow{color:#2e7d32; font-size:1.3rem; font-weight:800; flex:0 0 auto;}
 .flowA .addbox{align-self:center; width:52px; height:52px; border-radius:12px;}
-/* row B: vertical stack */
 .stackB{display:flex; flex-direction:column; gap:10px; flex:1;}
-#toast{
-  position:fixed; left:50%; bottom:22px; transform:translateX(-50%);
+/* ---------- actions section ---------- */
+.actions-section{max-width:1100px; margin:16px auto 60px; padding:16px;
+  background:var(--panel); border:1px solid var(--border); border-radius:14px; box-shadow:var(--shadow);}
+.actions-section h3{margin:0 0 4px; font-size:1rem; color:var(--green-dark);}
+.actions-section .hint{margin:0 0 10px; font-size:.75rem; color:var(--muted);}
+.act-table{width:100%; border-collapse:collapse; font-size:.82rem;}
+.act-table th{background:var(--green-soft); color:var(--green-dark); text-align:left;
+  padding:6px 8px; font-weight:600; border:1px solid var(--border); font-size:.75rem;}
+.act-table td{padding:4px; border:1px solid var(--border); vertical-align:top;}
+.act-table td input, .act-table td textarea, .act-table td select{
+  width:100%; font-family:inherit; font-size:.82rem; padding:5px 7px;
+  border:1px solid transparent; border-radius:6px; background:transparent; color:var(--text); resize:vertical;}
+.act-table td input:focus, .act-table td textarea:focus, .act-table td select:focus{
+  outline:none; border-color:var(--green); background:var(--panel);}
+.act-table td textarea{min-height:34px;}
+.act-table .del-row{background:transparent; border:none; color:var(--danger); cursor:pointer; font-size:1rem;}
+.act-scroll{overflow-x:auto;}
+#btnAddAction{margin-top:10px; font-family:inherit; font-weight:600; padding:8px 16px;
+  border:1px dashed var(--green); border-radius:10px; background:var(--green-soft);
+  color:var(--green-dark); cursor:pointer;}
+/* ---------- toast & modals ---------- */
+#toast{position:fixed; left:50%; bottom:22px; transform:translateX(-50%);
   background:#111827; color:#fff; padding:9px 18px; border-radius:999px;
   font-size:.82rem; opacity:0; transition:opacity .25s; z-index:100; pointer-events:none;
-  max-width:90vw; text-align:center;
-}
+  max-width:90vw; text-align:center;}
 #toast.show{opacity:.95;}
 .modal-bg{position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:60; display:none;
-  align-items:center; justify-content:center; padding:20px;}
+  align-items:center; justify-content:center; padding:16px;}
 .modal-bg.open{display:flex;}
-.modal{background:var(--panel); border-radius:16px; max-width:480px; width:100%; padding:20px;
-  box-shadow:0 10px 40px rgba(0,0,0,.3); max-height:85vh; overflow:auto;}
-.modal h2{margin:0 0 10px; font-size:1rem;}
-.modal ul{margin:0 0 12px; padding-left:20px; font-size:.85rem; line-height:1.7;}
-.modal button{font-family:inherit; font-weight:600; padding:8px 18px; border-radius:10px;
-  border:none; background:#2e7d32; color:#fff; cursor:pointer;}
+.modal{background:var(--panel); border-radius:16px; max-width:560px; width:100%; padding:20px;
+  box-shadow:0 10px 40px rgba(0,0,0,.3); max-height:88vh; overflow:auto;}
+.modal h2{margin:0 0 6px; font-size:1.05rem;}
+.modal h3{margin:14px 0 6px; font-size:.9rem; color:var(--green-dark);}
+.modal .m-hint{font-size:.78rem; color:var(--muted); margin:0 0 10px;}
+.modal ul, .modal ol{margin:0 0 12px; padding-left:20px; font-size:.85rem; line-height:1.7;}
+.q-list{list-style:none; padding:0; margin:0;}
+.q-list li{display:flex; gap:8px; align-items:flex-start; padding:8px 10px;
+  border:1px solid var(--border); border-radius:10px; margin-bottom:6px; font-size:.85rem;
+  background:var(--panel);}
+.q-list li:hover{background:var(--green-soft);}
+.q-list li span{flex:1; cursor:pointer;}
+.q-list li button{flex:0 0 auto; padding:4px 10px; font-family:inherit; font-size:.75rem;
+  font-weight:600; border-radius:8px; border:1px solid var(--green); background:var(--green);
+  color:#fff; cursor:pointer;}
+.modal .btn-row{display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap; margin-top:12px;}
+.modal .btn-row button{font-family:inherit; font-weight:600; padding:8px 16px; border-radius:10px;
+  border:none; background:#666; color:#fff; cursor:pointer;}
+.modal .btn-row button.primary{background:var(--green-dark);}
+/* method wizard */
+.wiz-grid{display:grid; grid-template-columns:1fr; gap:12px; margin:12px 0;}
+.wiz-grid label{display:flex; flex-direction:column; gap:6px; font-size:.82rem; font-weight:600;}
+.wiz-grid select{font-family:inherit; font-size:.9rem; padding:9px 12px;
+  border:1px solid var(--border); border-radius:10px; background:var(--panel); color:var(--text);}
+.wiz-result{padding:12px; border-radius:10px; background:var(--green-soft);
+  border:1px solid var(--green); margin-top:12px; display:none;}
+.wiz-result.on{display:block;}
+.wiz-result .rmethod{font-size:1.15rem; font-weight:700; color:var(--green-dark);}
+.wiz-result .rscore{font-size:.8rem; color:var(--muted); margin-top:4px;}
+.wiz-result .rdesc{font-size:.82rem; margin-top:8px; line-height:1.55;}
 @media print{
   @page{size:A4 portrait; margin:8mm;}
   body{background:#fff;}
-  header.app,.toolbar,.tips,#toast,.modal-bg{display:none !important;}
-  .board-scroll{overflow:visible; padding:0;}
+  header.app,.toolbar,.tips,.meta-panel,#toast,.modal-bg{display:none !important;}
+  .board-scroll,.actions-section{overflow:visible; padding:0;}
+  .actions-section{border:none; box-shadow:none; page-break-before:always;}
   #board{min-width:0; width:100%;}
+  #btnAddAction{display:none;}
+  .act-table .del-row{display:none;}
 }
 @media (max-width:560px){
   .rowT .label{flex-basis:96px; padding:8px 4px;}
   .node{font-size:.8rem;}
   .cat{padding:0 6px;}
+  .act-table{font-size:.72rem;}
 }
 </style>
 </head>
 <body>
 
 <header class="app">
-  <h1>เครื่องมือสร้างแผนผังวิเคราะห์ปัจจัยร่วม (5-Tier Diagram)</h1>
-  <p>แตะที่กล่องเพื่อพิมพ์ได้ทันที • เพิ่ม/ลบกล่องได้ทุกหมวด • ส่งออกเป็น PNG หรือพิมพ์/บันทึก PDF</p>
+  <h1>เครื่องมือวิเคราะห์ปัจจัยร่วม (5-Tier RCA)</h1>
+  <p>พร้อมคำถามชี้นำจากแนวทาง HA / นพ.อนุวัฒน์ ศุภชุติกุล</p>
   <button class="guide-link" id="btnGuide">📖 แนวทางทบทวน 5 Tier โดยละเอียด</button>
 </header>
 
 <div class="toolbar">
   <input id="caseTitle" placeholder="ชื่อเคส / หัวข้อการวิเคราะห์ (เช่น RCA: ผู้ป่วย…)">
+  <button id="btnMeta" class="meta-btn">📋 ข้อมูลเคส</button>
+  <button id="btnWizard" class="wizard">🎯 เลือกวิธี RCA</button>
   <button id="btnLink">🔗 โหมดเชื่อมโยง</button>
-  <button id="btnClearLines">🧹 ลบเส้นทั้งหมด</button>
-  <button id="btnPng" class="primary">⬇ บันทึก PNG</button>
-  <button id="btnPdf">📄 บันทึก PDF</button>
+  <button id="btnClearLines">🧹 ลบเส้น</button>
+  <button id="btnPng" class="primary">⬇ PNG</button>
+  <button id="btnPdf">📄 PDF</button>
   <button id="btnPrint">🖨 พิมพ์</button>
-  <button id="btnSave">💾 บันทึกข้อมูล</button>
-  <button id="btnLoad">📂 โหลดข้อมูล</button>
-  <button id="btnReset" class="danger">↺ ล้างทั้งหมด</button>
+  <button id="btnSave">💾 บันทึก</button>
+  <button id="btnLoad">📂 โหลด</button>
+  <button id="btnReset" class="danger">↺ ล้าง</button>
+</div>
+
+<div class="meta-panel" id="metaPanel">
+  <h3>📋 ข้อมูลเคส (Case Metadata) <button id="btnCloseMeta">✕ ปิด</button></h3>
+  <div class="meta-grid">
+    <label>วันที่เกิดเหตุการณ์<input type="date" id="mIncidentDate"></label>
+    <label>วันที่วิเคราะห์<input type="date" id="mAnalysisDate"></label>
+    <label>หน่วยงาน / ที่เกิดเหตุ<input type="text" id="mLocation" placeholder="เช่น ER / OR / หอผู้ป่วยใน…"></label>
+    <label>เป็น Adverse Event?<select id="mIsAE">
+      <option value="">— เลือก —</option>
+      <option value="yes">ใช่ (Adverse Event)</option>
+      <option value="no">ไม่ใช่ (Near miss / no-harm)</option>
+    </select></label>
+    <label>ระดับความรุนแรง (NCC MERP)<select id="mHarm">
+      <option value="">— เลือก —</option>
+      <option value="A">A – Capacity to cause error</option>
+      <option value="B">B – Not reach the patient (near miss)</option>
+      <option value="C">C – Reach patient, no harm</option>
+      <option value="D">D – Require monitoring</option>
+      <option value="E">E – Require intervention</option>
+      <option value="F">F – Require hospitalization</option>
+      <option value="G">G – Permanent harm</option>
+      <option value="H">H – Intervention to sustain life</option>
+      <option value="I">I – Death</option>
+    </select></label>
+    <label>วิธีวิเคราะห์<select id="mMethod">
+      <option value="">— เลือก / ใช้ปุ่ม 🎯 —</option>
+      <option value="AAR">AAR & Mindfulness Review</option>
+      <option value="Concise">Concise Incident Analysis</option>
+      <option value="Comprehensive">Comprehensive Incident Analysis</option>
+      <option value="Multi-incident">Multi-incident Analysis</option>
+      <option value="LFD">Learning from Defects</option>
+    </select></label>
+    <div class="meta-team">
+      <div class="meta-team-hdr">
+        <span>👥 ทีมวิเคราะห์ (ชื่อ – บทบาท / วิชาชีพ)</span>
+        <button id="btnAddTeam">+ เพิ่มสมาชิก</button>
+      </div>
+      <div id="teamRows"></div>
+    </div>
+  </div>
 </div>
 
 <div class="tips">
-  💡 แตะ/คลิกกล่องแล้วพิมพ์ได้ทันที (รองรับมือถือและแท็บเล็ต) • กดปุ่ม "+" ในแต่ละหมวดเพื่อเพิ่มกล่อง •
-  กดปุ่มแดงมุมกล่องที่เลือกไว้เพื่อลบ • คลิกชื่อหมวด/ชื่อ Tier เพื่อแก้ไขได้ •
-  <b>ลบเส้นทีละเส้น:</b> ในโหมดเชื่อมโยง แตะกล่องคู่เดิมที่มีเส้นอยู่แล้วซ้ำอีกครั้ง เส้นนั้นจะถูกลบทันที
-  (กล่องที่มีเส้นเชื่อมกับกล่องที่เลือกไว้จะขึ้นกรอบแดงประ)
+  💡 แตะกล่องพิมพ์ได้ทันที • ปุ่ม <b>💡 คำถามชี้นำ</b> ในหัวหมวดช่วยกระตุกความคิด •
+  ปุ่ม <b>🎯 เลือกวิธี RCA</b> ช่วยเลือกความลึกของการวิเคราะห์ตาม severity × probability •
+  ปุ่ม <b>🔗 โหมดเชื่อมโยง</b> ลากเส้นระหว่างกล่อง (แตะคู่เดิมซ้ำเพื่อลบ) •
+  ตารางล่างสุดคือ <b>SMART Actions</b> เชื่อมกับ CMP แต่ละข้อ
 </div>
 
 <div class="board-scroll">
   <div id="board">
-    <div class="board-case" id="boardCase"></div>
+    <div class="board-hdr">
+      <div class="b-title" id="bTitle"></div>
+      <div class="b-meta" id="bMeta"></div>
+    </div>
     <svg id="wires"></svg>
     <div id="rows"></div>
   </div>
 </div>
 
+<div class="actions-section">
+  <h3>📋 แนวทางแก้ไข / มาตรการป้องกัน (SMART Actions)</h3>
+  <p class="hint">Specific • Measurable • Achievable • Relevant • Time-bound — แต่ละมาตรการควรเชื่อมกับ CMP และสาเหตุรากที่ระบุไว้ในแผนผัง</p>
+  <div class="act-scroll">
+    <table class="act-table">
+      <thead>
+        <tr>
+          <th style="width:32px">#</th>
+          <th style="width:20%">CMP ที่เกี่ยวข้อง</th>
+          <th style="width:18%">สาเหตุราก</th>
+          <th style="width:26%">มาตรการ (SMART)</th>
+          <th style="width:12%">ผู้รับผิดชอบ</th>
+          <th style="width:12%">ตัววัดผล</th>
+          <th style="width:10%">กรอบเวลา</th>
+          <th style="width:28px"></th>
+        </tr>
+      </thead>
+      <tbody id="actionRows"></tbody>
+    </table>
+  </div>
+  <button id="btnAddAction">+ เพิ่มมาตรการ</button>
+</div>
+
 <div id="toast"></div>
 
+<!-- Modals -->
 <div class="modal-bg" id="guideModal">
   <div class="modal">
     <h2>📖 แนวทางทบทวน 5 Tier โดยละเอียด</h2>
+    <p class="m-hint">อ้างอิงจาก HA Forum / นพ.อนุวัฒน์ ศุภชุติกุล (2-Axis Swiss Cheese Model + 5 Tiers of Contributory Factors by Kern Henriksen et al.)</p>
+    <h3>2 แกนสำคัญ</h3>
     <ul>
-      <li><b>A – Chronological of Events (กระบวนการดูแล):</b> เรียงลำดับขั้นตอน/เหตุการณ์การดูแลตามเวลา</li>
-      <li><b>B – Care Management Problems (ปัญหาในการดูแล):</b> ระบุจุดที่การดูแลเบี่ยงเบนจากมาตรฐาน</li>
-      <li><b>C – Contributing Factors 5 Tier:</b>
-        <br>• <b>1st Tier</b> — Personnel Factors / Patient Factors
-        <br>• <b>2nd Tier</b> — Task / Team
-        <br>• <b>3rd Tier</b> — Physical Environment / Equipment / Social Environment
-        <br>• <b>4th Tier</b> — Organization &amp; Management
-        <br>• <b>5th Tier</b> — Institutional Context (ปัจจัยภายนอกองค์กร)</li>
+      <li><b>แนวนอน (A):</b> Chronology of Events – ลำดับขั้นตอนการดูแลตามเวลา</li>
+      <li><b>แนวตั้ง:</b> B → 5 Tiers – จาก CMP ที่พบขึ้นไปหาสาเหตุระบบ</li>
     </ul>
-    <p style="font-size:.78rem;color:var(--muted)">ใช้โหมดเชื่อมโยงลากเส้นจากขั้นตอน → ปัญหา → ปัจจัยร่วมแต่ละ Tier เพื่อแสดงความเชื่อมโยงของการวิเคราะห์</p>
-    <div style="text-align:right"><button id="btnCloseGuide">ปิด</button></div>
+    <h3>โครงสร้าง 5 Tiers</h3>
+    <ul>
+      <li><b>Tier 1 – Individuals:</b> Patient Factors + Individual Staff Factors</li>
+      <li><b>Tier 2 – Work & Team:</b> Nature of Work / Task + Team</li>
+      <li><b>Tier 3 – Environment:</b> Physical Env + Equipment + Social Env (IEC/Supervision)</li>
+      <li><b>Tier 4 – Management:</b> Organizational climate + Resource + Process</li>
+      <li><b>Tier 5 – Ext. Environment:</b> Societal, Policy, Design, New tech</li>
+    </ul>
+    <h3>ขั้นตอนการใช้ template</h3>
+    <ol>
+      <li>ระบุ chronology of events (แถว A)</li>
+      <li>ระบุ Care Management Problems / Active Failures (แถว B) – มีปุ่ม 💡 ช่วย</li>
+      <li>ถาม WHY? ตามแต่ละชั้น (Tier 1-5) แยกสาเหตุของแต่ละ CMP ออกจากกัน</li>
+      <li>ระบุ SMART Actions ในตารางล่างสุด</li>
+    </ol>
+    <p class="m-hint">💡 หลักสำคัญ: <b>ให้ความสำคัญกับความสัมพันธ์แนวดิ่ง</b> — CMP แต่ละข้อต้องมีสาเหตุเฉพาะของมันเอง ไม่ควรยุบรวมสาเหตุตามแนวราบ</p>
+    <div class="btn-row"><button id="btnCloseGuide" class="primary">ปิด</button></div>
   </div>
 </div>
 
@@ -213,24 +340,293 @@ header.app p{margin:3px 0 0; color:var(--muted); font-size:.8rem;}
   <div class="modal" style="text-align:center">
     <h2 id="exTitle" style="word-break:break-all">ส่งออกไฟล์</h2>
     <img id="exImg" alt="ตัวอย่างภาพที่ส่งออก" style="max-width:100%;max-height:52vh;border:1px solid var(--border);border-radius:8px;display:none">
-    <p id="exHint" style="font-size:.8rem;color:var(--muted)"></p>
-    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
-      <button id="exDl">⬇ ดาวน์โหลด</button>
+    <p id="exHint" class="m-hint"></p>
+    <div class="btn-row" style="justify-content:center">
+      <button id="exDl" class="primary">⬇ ดาวน์โหลด</button>
       <button id="exShare" style="background:#1565c0">📤 แชร์ไฟล์</button>
-      <button id="exClose" style="background:#666">ปิด</button>
+      <button id="exClose">ปิด</button>
     </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="wizardModal">
+  <div class="modal">
+    <h2>🎯 เลือกวิธีการทำ RCA</h2>
+    <p class="m-hint">Safety Assessment Matrix – เลือกวิธีให้เหมาะกับความรุนแรงและโอกาสเกิดซ้ำ</p>
+    <div class="wiz-grid">
+      <label>ความรุนแรง (Severity of harm)
+        <select id="wSev">
+          <option value="">— เลือก —</option>
+          <option value="cat">Catastrophic (I – Death / permanent severe harm)</option>
+          <option value="maj">Major (G,H – Permanent harm / life-sustaining)</option>
+          <option value="mod">Moderate (E,F – Require intervention/hospitalization)</option>
+          <option value="min">Minor (C,D – No/minor harm)</option>
+          <option value="nm">Near miss / No harm (A,B)</option>
+        </select>
+      </label>
+      <label>โอกาสเกิดซ้ำ (Probability)
+        <select id="wProb">
+          <option value="">— เลือก —</option>
+          <option value="freq">Frequent (มักเกิดขึ้น)</option>
+          <option value="fair">Fairly frequent / Likely</option>
+          <option value="occ">Occasional / Possible</option>
+          <option value="infreq">Infrequent / Unlikely</option>
+          <option value="rare">Remote / Rare</option>
+        </select>
+      </label>
+    </div>
+    <div class="wiz-result" id="wResult">
+      <div class="rmethod" id="wMethod"></div>
+      <div class="rscore" id="wScore"></div>
+      <div class="rdesc" id="wDesc"></div>
+    </div>
+    <div class="btn-row">
+      <button id="wApply" class="primary" style="display:none">ใช้วิธีนี้ในเคสนี้</button>
+      <button id="btnCloseWiz">ปิด</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="qModal">
+  <div class="modal">
+    <h2 id="qTitle">💡 คำถามชี้นำ</h2>
+    <p class="m-hint" id="qSubtitle"></p>
+    <div id="qContent"></div>
+    <div class="btn-row"><button id="btnCloseQ" class="primary">ปิด</button></div>
   </div>
 </div>
 
 <script>
 "use strict";
-const LSKEY = "rca5tier-data-v2";
+const LSKEY = "rca5tier-data-v3";
+
+/* =========================
+   DATA: Guiding Questions
+   ========================= */
+const QUESTIONS = {
+  personnel: {
+    title:"Personnel / Individual Staff Factors",
+    sub:"คำถามชี้นำสำหรับปัจจัยด้านบุคลากรผู้ปฏิบัติงาน",
+    items:[
+      "ระดับการศึกษา ประสบการณ์ การฝึกอบรม และทักษะเหมาะสมกับงานที่ต้องทำหรือไม่?",
+      "ความรู้และทักษะเพียงพอกับงานที่ต้องทำหรือไม่?",
+      "ความอ่อนล้า ความเครียด ความตื่นตัว และประเด็นสุขภาพอื่น ๆ มีส่วนต่ออุบัติการณ์?",
+      "ภาระงานเหมาะสมหรือไม่ (workload)?",
+      "แรงจูงใจและเจตคติมีส่วนต่ออุบัติการณ์อย่างไร?",
+      "มีความช่วยเหลือและ supervision ที่เหมาะสมและทันเวลาหรือไม่?",
+      "ความสามารถทางด้านวัฒนธรรม (cultural competency) เพียงพอกับผู้ป่วย?",
+      "Sensory/physical capabilities อ่อนล้า/สุขภาพมีผลต่อการทำงานหรือไม่?",
+      "บทบาทและหน้าที่รับผิดชอบชัดเจนหรือไม่?"
+    ]
+  },
+  patient: {
+    title:"Patient Factors",
+    sub:"คำถามชี้นำสำหรับปัจจัยด้านผู้ป่วยและครอบครัว",
+    items:[
+      "ผู้ป่วยได้รับข้อมูลที่จะช่วยหลีกเลี่ยงหรือป้องกันอุบัติการณ์หรือไม่?",
+      "ผู้ป่วย/ครอบครัวมีส่วนในการป้องกันอุบัติการณ์อย่างไร?",
+      "การวินิจฉัยโรค สภาวะทางการแพทย์ และสภาพร่างกายของผู้ป่วยมีส่วนต่ออุบัติการณ์?",
+      "ยาที่ผู้ป่วยใช้มีส่วนต่ออุบัติการณ์?",
+      "ผู้ป่วยมีการแพ้ยา / อาหาร / สารอะไรบ้าง?",
+      "ปัจจัยด้านสังคมและวัฒนธรรมมีส่วนต่ออุบัติการณ์?",
+      "ปัจจัยด้านอารมณ์ จิตใจ มีส่วนต่ออุบัติการณ์?",
+      "ภาษาเป็นอุปสรรคหรือไม่?",
+      "มีปัญหาความสัมพันธ์ระหว่างบุคคล / ความร่วมมือของครอบครัว?",
+      "Informed & literacy เพียงพอสำหรับการตัดสินใจร่วม?"
+    ]
+  },
+  task: {
+    title:"Task / Nature of Work",
+    sub:"คำถามชี้นำสำหรับงานและกระบวนการดูแล",
+    items:[
+      "เคยเกิด/เคยคาดการณ์ความล้มเหลวหรือข้อขัดข้องในงานหรือกระบวนการนี้หรือไม่?",
+      "การทำงานนี้ต้องการทักษะที่เชี่ยวชาญเป็นพิเศษหรือไม่?",
+      "มีการออกแบบขั้นตอนที่แน่นอน (order sets, checklists) หรือไม่? มีการปฏิบัติตามหรือไม่?",
+      "มี protocol / CPG พร้อมใช้ ทันสมัย และมีการปฏิบัติตามในรายนี้หรือไม่?",
+      "มีข้อจำกัดหรือแรงกดดัน (เวลา ทรัพยากร) อะไรในการทำงานชิ้นนี้?",
+      "มีสารสนเทศที่จำเป็นในการตัดสินใจพร้อมใช้และทันสมัยหรือไม่ (test results, patient ID)?",
+      "มีระบบประเมินความเสี่ยง/ตรวจสอบ/ควบคุมคุณภาพ สำหรับงานนี้หรือไม่?",
+      "Workflow ซับซ้อนเพียงใด? มีการขัดจังหวะบ่อยหรือไม่?",
+      "ต้องทำงานพร้อมกันหลายอย่าง (multitasking) หรือไม่?"
+    ]
+  },
+  team: {
+    title:"Team",
+    sub:"คำถามชี้นำสำหรับปัจจัยด้านทีม",
+    items:[
+      "คุณภาพและปริมาณการสื่อสารในทีมเหมาะสม (ชัดเจน ถูกต้อง กระชับ ตรงประเด็น สมบูรณ์ ทันเวลา)?",
+      "มีการประชุมสรุปเกี่ยวกับประเด็นการดูแลสำคัญอย่างสม่ำเสมอ (briefings/debriefings)?",
+      "ทีมมีขวัญกำลังใจดี? สมาชิกช่วยเหลือกันและกัน?",
+      "มีการระบุบทบาทและหน้าที่รับผิดชอบชัดเจน?",
+      "มีช่องทางการสื่อสารพร้อมใช้และเหมาะสม (phone/pager/HIS)?",
+      "Handover / ส่งต่อข้อมูลระหว่างเวรเพียงพอ?",
+      "Team awareness ในสถานการณ์เป็นอย่างไร มีข้อมูลอะไรที่สมาชิกเอ๊ะแต่ไม่ได้พูด?",
+      "โครงสร้างทีมและผู้นำเป็นอย่างไร?",
+      "มีการรับฟังสมาชิก (deference to expertise) หรือไม่?"
+    ]
+  },
+  physenv: {
+    title:"Physical Environment",
+    sub:"คำถามชี้นำสำหรับสิ่งแวดล้อมทางกายภาพ",
+    items:[
+      "สิ่งแวดล้อมทางกายภาพเหมาะสมสำหรับงาน (ขนาดพื้นที่ layout ตำแหน่งที่ตั้ง การเข้าถึงทรัพยากร)?",
+      "ระดับเสียงในที่ทำงานรบกวนสัญญาณเตือนหรือไม่?",
+      "มีแสงสว่างเพียงพอสำหรับการทำงานหรือไม่?",
+      "อุณหภูมิ อากาศ ระบายอากาศ เหมาะสมหรือไม่?",
+      "มีการวางแผน/ทดสอบการตอบสนองภาวะฉุกเฉินและ failure mode หรือไม่?",
+      "มีการประเมินและจัดการความเสี่ยงด้านสิ่งแวดล้อมหรือไม่?",
+      "สิ่งแวดล้อมเป็นไปตามกฎข้อบังคับหรือไม่?",
+      "ระดับความเครียดของสิ่งแวดล้อม (crowding, distraction) เหมาะสมหรือไม่?"
+    ]
+  },
+  equipment: {
+    title:"Equipment / Human-System Interface",
+    sub:"คำถามชี้นำสำหรับเครื่องมือและอินเทอร์เฟซ",
+    items:[
+      "Design เหมาะสมกับหน้าที่ที่ต้องการ? ป้องกันการใช้งานผิดพลาด?",
+      "อุปกรณ์แสดงผลและควบคุมเข้าใจง่ายและใช้การได้ปกติหรือไม่?",
+      "อุปกรณ์สามารถตรวจสอบและแสดงปัญหาได้โดยอัตโนมัติหรือไม่?",
+      "ป้ายเตือน เอกสารอ้างอิง กลไกความปลอดภัย ใช้การได้ เห็นง่าย เข้าถึงง่าย?",
+      "การบำรุงรักษาและ upgrades เป็นไปตามกำหนดเวลา/ทันสมัยหรือไม่?",
+      "อุปกรณ์เครื่องมือได้มาตรฐานหรือไม่?",
+      "ผู้ใช้เห็นว่าอุปกรณ์นี้ใช้ง่าย (easy-to-use)?",
+      "มีระบบสำรอง (back-up) ถ้าเครื่องมือไม่ทำงาน?",
+      "ผู้ใช้ได้รับการฝึกอบรม? ผู้ใช้และเครื่องมือเหมาะสมกัน?",
+      "ระบบสารสนเทศ (HIS/EMR) พร้อมใช้และใช้การได้ดี?"
+    ]
+  },
+  social: {
+    title:"Social Environment / IEC & Supervision",
+    sub:"คำถามชี้นำสำหรับสิ่งแวดล้อมทางสังคม การสื่อสาร การฝึกอบรม การกำกับดูแล",
+    items:[
+      "ควรฝึกอบรม/ปฐมนิเทศเรื่องอะไร? IEC (Information, Education, Communication) เพียงพอ?",
+      "การกำกับดูแล (Supervision) เหมาะสมและทันเวลา?",
+      "ให้ข้อมูลอะไรกับบุคลากรใหม่ / ผู้ปฏิบัติงาน?",
+      "จะปรับสิ่งที่มองเห็นให้เข้าใจง่าย/สะดุดตา หรือใช้ visual อะไรบ้างเพื่อป้องกันความพลาด?",
+      "ระบบพี่เลี้ยง (buddy system) work ในทุกช่วงเวลาหรือไม่?",
+      "การส่งต่อข้อมูล / handover ครบถ้วน?",
+      "วัฒนธรรมความปลอดภัย (safety culture) ในหน่วยงาน?"
+    ]
+  },
+  org: {
+    title:"Organization & Management (Tier 4)",
+    sub:"คำถามชี้นำสำหรับปัจจัยระดับองค์กร",
+    items:[
+      "โครงสร้าง นโยบาย วัฒนธรรม กรอบคิด ระบบบริหาร อะไรบ้างที่ควรปรับปรุง?",
+      "มีการกำหนดนโยบายและระเบียบปฏิบัติที่รับรู้ เข้าถึงได้ และตอบสนองความต้องการของผู้ใช้?",
+      "มีการแก้ปัญหาเฉพาะหน้า (work-arounds) ที่แตกต่างไปจากเอกสารคู่มือหรือไม่?",
+      "ทุกคนสบายใจที่จะเอ่ยถึงข้อห่วงกังวลเรื่องความปลอดภัยหรือไม่ (psychological safety)?",
+      "มีการสนับสนุนที่ชัดเจนจากผู้นำและ Board สำหรับการดูแลผู้ป่วยอย่างปลอดภัย?",
+      "การจัด schedule มีผลต่ออัตรากำลัง หรือทำให้เกิดความเครียด/ความอ่อนล้าหรือไม่?",
+      "ความสามารถของระบบเพียงพอที่จะทำงานให้ได้ผล (การเข้าถึงทรัพยากร)?",
+      "ผู้บริหารควรให้ความสำคัญกับทรัพยากรอะไรเพิ่มเติม?",
+      "การสนับสนุนของหน่วยกลาง (เภสัช, MedTech, IT) อะไรที่ควรปรับ?",
+      "การฝึกอบรมและการศึกษาต่อเนื่องเพียงพอ?",
+      "ระบบบำรุงรักษามีประสิทธิภาพ?",
+      "มีการพิจารณาปัญหาของระบบโดยไม่ตำหนิตัวบุคคลเมื่อเกิดอุบัติการณ์ (just culture)?"
+    ]
+  },
+  institutional: {
+    title:"Institutional Context (Tier 5 – External)",
+    sub:"คำถามชี้นำสำหรับปัจจัยภายนอกองค์กร",
+    items:[
+      "Societal influence / public awareness มีผลอย่างไร?",
+      "Policy, rules & regulation ระดับชาติมีผลอย่างไร?",
+      "Payors, finance, IT ระดับประเทศมีผล?",
+      "องค์กรวิชาชีพ (professional organization) มีแนวทางกำหนดไว้อย่างไร?",
+      "Design ของเครื่องมือและเวชภัณฑ์ในตลาด?",
+      "New technology ที่เพิ่งมาใหม่ ส่งผลอย่างไร?",
+      "มาตรฐานการรับรอง (HA) กำหนดอะไรเพิ่มเติม?",
+      "ผลกระทบของการตัดสินใจทางการเมือง / เศรษฐกิจ?",
+      "ผลกระทบของเหตุการณ์ระดับโลก / ระดับภูมิภาค?"
+    ]
+  }
+};
+
+const CMP_HELPER = {
+  examples: [
+    "ไม่มีการเฝ้าระวัง / สังเกต / ลงมือกระทำ",
+    "ล่าช้าในการวินิจฉัย",
+    "ประเมินความเสี่ยงผิดพลาด",
+    "ส่งต่อข้อมูลไม่เพียงพอ (handover)",
+    "ไม่สังเกตเห็นความผิดปกติของเครื่องมือ",
+    "ไม่ได้ทำการตรวจสอบก่อนหัตถการ / ผ่าตัด",
+    "ไม่ปฏิบัติตาม protocol ที่ตกลงกันไว้",
+    "ไม่ขอความช่วยเหลือเมื่อจำเป็น (ไม่ consult)",
+    "ไม่กำกับดูแลบุคลากรใหม่อย่างเพียงพอ",
+    "ใช้ protocol อย่างไม่ถูกต้อง",
+    "ให้การรักษาผิดตำแหน่ง (wrong site)",
+    "ให้การรักษาผิด (wrong medication/dose/patient)",
+    "การตัดสินใจที่ไม่ถูกต้อง (cognitive error)"
+  ],
+  questions: [
+    "เราจะฉุกใจคิดถึงภาวะนี้ได้ในขั้นตอนใดบ้าง?",
+    "ข้อมูลอะไร (Hx, VS, PE, Lab) ที่น่าจะกระตุกให้เราคิดถึงอะไรบางอย่าง?",
+    "มีอะไรที่เป็น red flag แต่ทีมละเลยไป?",
+    "มีอะไรที่เป็น must-not-miss diagnosis แต่ทีมไม่ได้คิดถึงใน DDx?",
+    "การเปลี่ยนแปลงอะไร ณ ช่วงเวลาใด ที่ไม่น่าปล่อยผ่าน?",
+    "ควรมีการ monitor อะไร บ่อยเพียงใด?",
+    "ควรมีการประเมินซ้ำอย่างไร ในช่วงเวลาใด?",
+    "จุดที่สามารถตัดสินใจแตกต่างออกไปมีตรงไหน? การตัดสินใจที่เป็นไปได้คืออะไร?",
+    "มีการประเมินความเสี่ยงที่คลาดเคลื่อนไปตรงไหน?",
+    "มีการส่งต่อข้อมูลที่ไม่เพียงพออะไรบ้าง?",
+    "มีการกระทำอะไรที่แตกต่างไปจาก CPG/protocol ที่ตกลงกันไว้?"
+  ]
+};
+
+/* Safety Assessment Matrix: score by (severity, probability) */
+const MATRIX = {
+  cat:    {freq:3, fair:3, occ:3, infreq:3, rare:3},
+  maj:    {freq:3, fair:3, occ:2, infreq:2, rare:2},
+  mod:    {freq:2, fair:2, occ:1, infreq:1, rare:1},
+  min:    {freq:1, fair:1, occ:1, infreq:1, rare:1},
+  nm:     {freq:0, fair:0, occ:0, infreq:0, rare:0}
+};
+const METHOD_INFO = {
+  "Comprehensive": {
+    label:"Comprehensive Incident Analysis",
+    desc:"ใช้ทีมสหสาขาวิชาชีพ ทบทวนเชิงลึก 4–90 วัน เอกสาร + สัมภาษณ์ + observation + ทบทวนวรรณกรรม เขียนรายงานสมบูรณ์พร้อม action plan"
+  },
+  "Concise": {
+    label:"Concise Incident Analysis",
+    desc:"ทำโดย 1–2 คน ใช้เวลาไม่กี่ชั่วโมง–วัน มุ่งเน้นปัจจัยหลัก เขียนสรุปสั้นและ recommended action"
+  },
+  "AAR": {
+    label:"AAR & Mindfulness Review",
+    desc:"5–10 นาที ทันทีหลังเกิดเหตุ ใช้ 4 คำถาม: คาดว่าจะเกิดอะไร / จริง ๆ เกิดอะไร / แตกต่างอย่างไร ทำไม / ได้เรียนรู้อะไร"
+  },
+  "Multi-incident": {
+    label:"Multi-incident Analysis",
+    desc:"ทบทวนหลายเหตุการณ์รวมกันโดยจัดกลุ่มเป็น theme หา common trends เหมาะกับ low/moderate harm หรือ near miss ที่เกิดหลายครั้ง"
+  },
+  "LFD": {
+    label:"Learning from Defects",
+    desc:"ใช้ 4 คำถามพื้นฐาน (Johns Hopkins): เกิดอะไรขึ้น / ทำไมจึงเกิด / จะลด risk อย่างไร / จะรู้ได้อย่างไรว่า risk ลดลง"
+  }
+};
+function pickMethod(sev, prob){
+  if (!sev || !prob) return null;
+  const s = MATRIX[sev][prob];
+  if (sev === "nm") return {score:"near miss", method:"AAR", alt:"Multi-incident"};
+  if (s >= 3) return {score:"3", method:"Comprehensive", alt:null};
+  if (s === 2) return {score:"2", method:"Comprehensive", alt:"Concise"};
+  return {score:"1", method:"Concise", alt:"LFD (Learning from Defect)"};
+}
+
+/* =========================
+   STATE
+   ========================= */
 function uid(){ return "b" + Math.random().toString(36).slice(2,9); }
 function box(){ return {id:uid(), t:""}; }
+function newAction(){ return {id:uid(), cmp:"", cause:"", action:"", owner:"", measure:"", timeline:""}; }
+function newTeam(){ return {name:"", role:""}; }
 
-/* rows are rendered top -> bottom in this order (5th tier on top, A at bottom) */
 const defaultState = () => ({
-  caseTitle: "",
+  meta: {
+    caseTitle:"", incidentDate:"", analysisDate:"", location:"",
+    isAE:"", harm:"", method:"",
+    team:[newTeam()]
+  },
   rows: [
     {id:"T5", kind:"cats", tier:"5th Tier", letter:"", ph:"พิมพ์ข้อความ",
       cats:[{id:uid(), name:"Institutional Context", boxes:[box(),box()]}]},
@@ -257,14 +653,15 @@ const defaultState = () => ({
     {id:"A", kind:"flow", tier:"Chronological of Events", sub:"กระบวนการดูแล", letter:"A",
       ph:"ขั้นตอน / Step", cats:[{id:uid(), name:"", boxes:[box(),box(),box()]}]}
   ],
-  links: []
+  links: [],
+  actions: [newAction()]
 });
 
 let state = defaultState();
 let linkMode=false, linkSrc=null, selectedNode=null;
 let downloadsNS = undefined;
 
-const $=s=>document.querySelector(s);
+const $ = s => document.querySelector(s);
 const rowsEl=$("#rows"), wires=$("#wires"), board=$("#board");
 
 function toast(msg){
@@ -272,7 +669,27 @@ function toast(msg){
   clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove("show"),2600);
 }
 
-/* ---------- render ---------- */
+/* =========================
+   Category → question set matcher
+   ========================= */
+function findQuestions(catName){
+  if(!catName) return null;
+  const k = catName.toLowerCase();
+  if (k.includes("personnel") || k.includes("staff") || k.includes("บุคลากร") || k.includes("เจ้าหน้าที่")) return QUESTIONS.personnel;
+  if (k.includes("patient") || k.includes("ผู้ป่วย")) return QUESTIONS.patient;
+  if (k.includes("task") || k.includes("nature of work") || k.includes("งาน") || k.includes("กระบวนการ")) return QUESTIONS.task;
+  if (k.includes("team") || k.includes("ทีม")) return QUESTIONS.team;
+  if (k.includes("physical") || k.includes("กายภาพ") || (k.includes("สิ่งแวดล้อม") && !k.includes("ภายนอก"))) return QUESTIONS.physenv;
+  if (k.includes("equipment") || k.includes("device") || k.includes("เครื่องมือ") || k.includes("อุปกรณ์")) return QUESTIONS.equipment;
+  if (k.includes("social") || k.includes("supervision") || k.includes("iec") || k.includes("ฝึกอบรม") || k.includes("สื่อสาร")) return QUESTIONS.social;
+  if (k.includes("organization") || k.includes("management") || k.includes("องค์กร") || k.includes("บริหาร")) return QUESTIONS.org;
+  if (k.includes("institutional") || k.includes("context") || k.includes("external") || k.includes("ภายนอก")) return QUESTIONS.institutional;
+  return null;
+}
+
+/* =========================
+   RENDER
+   ========================= */
 function render(){
   rowsEl.innerHTML="";
   state.rows.forEach(row=>{
@@ -281,7 +698,7 @@ function render(){
     const label=document.createElement("div"); label.className="label";
     const tn=document.createElement("div"); tn.className="tname"; tn.contentEditable="true";
     tn.textContent=row.tier;
-    tn.addEventListener("input",()=>{ row.tier=tn.textContent; autosave(); });
+    tn.addEventListener("input",()=>{ row.tier=tn.textContent; autosave(); refreshBoardMeta(); });
     label.appendChild(tn);
     if(row.sub!==undefined){
       const ts=document.createElement("div"); ts.className="tsub"; ts.contentEditable="true";
@@ -292,6 +709,13 @@ function render(){
     if(row.letter){
       const lt=document.createElement("div"); lt.className="letter"; lt.textContent=row.letter;
       label.appendChild(lt);
+    }
+    /* CMP row: 💡 button on label */
+    if(row.id === "B"){
+      const q=document.createElement("button"); q.className="qbtn"; q.textContent="💡 CMP";
+      q.title="ตัวอย่าง CMP + คำถามช่วยระบุ";
+      q.addEventListener("click", ev=>{ ev.stopPropagation(); openCMPHelper(row); });
+      label.appendChild(q);
     }
     r.appendChild(label);
 
@@ -308,17 +732,26 @@ function render(){
     r.appendChild(cell);
     rowsEl.appendChild(r);
   });
-  $("#caseTitle").value=state.caseTitle;
-  $("#boardCase").textContent=state.caseTitle;
+  refreshMetaUI();
+  refreshActions();
+  refreshBoardMeta();
   drawLines();
 }
 
-function buildCat(row,cat,showName){
+function buildCat(row, cat, showName){
   const c=document.createElement("div"); c.className="cat";
   if(showName){
-    const nm=document.createElement("div"); nm.className="cname"; nm.contentEditable="true";
-    nm.textContent=cat.name;
-    nm.addEventListener("input",()=>{ cat.name=nm.textContent; autosave(); });
+    const nm=document.createElement("div"); nm.className="cname";
+    const nt=document.createElement("span"); nt.className="ctxt"; nt.contentEditable="true";
+    nt.textContent=cat.name;
+    nt.addEventListener("input",()=>{ cat.name=nt.textContent; autosave(); });
+    nm.appendChild(nt);
+    if(findQuestions(cat.name)){
+      const qb=document.createElement("button"); qb.className="qbtn";
+      qb.textContent="💡"; qb.title="คำถามชี้นำ";
+      qb.addEventListener("click", ev=>{ ev.stopPropagation(); openCategoryQuestions(cat, row); });
+      nm.appendChild(qb);
+    }
     c.appendChild(nm);
   }
   cat.boxes.forEach(b=>c.appendChild(makeNode(row,cat,b)));
@@ -337,7 +770,7 @@ function buildStack(row){
   const add=addBtn(()=>{
     const nb=box(); cat.boxes.push(nb);
     c.insertBefore(makeNode(row,cat,nb),add);
-    autosave(); drawLinesSoon();
+    autosave(); refreshActions(); drawLinesSoon();
   });
   c.appendChild(add);
   return c;
@@ -363,12 +796,13 @@ function addBtn(fn){
   b.addEventListener("click",fn);
   return b;
 }
-
 function makeNode(row,cat,b,onRemove){
   const node=document.createElement("div"); node.className="node"; node.dataset.id=b.id;
   const txt=document.createElement("div"); txt.className="txt"; txt.contentEditable="true";
   txt.dataset.ph=row.ph; txt.textContent=b.t;
-  txt.addEventListener("input",()=>{ b.t=txt.textContent; autosave(); drawLinesSoon(); });
+  txt.addEventListener("input",()=>{ b.t=txt.textContent; autosave();
+    if(row.id==="B") refreshActions();
+    drawLinesSoon(); });
   const del=document.createElement("button"); del.className="del"; del.textContent="×"; del.title="ลบกล่องนี้";
   del.addEventListener("click",ev=>{
     ev.stopPropagation();
@@ -376,7 +810,7 @@ function makeNode(row,cat,b,onRemove){
     state.links=state.links.filter(l=>l.a!==b.id&&l.b!==b.id);
     selectedNode=null;
     if(onRemove){ onRemove(); } else { node.remove(); }
-    autosave(); drawLinesSoon();
+    autosave(); if(row.id==="B") refreshActions(); drawLinesSoon();
   });
   node.appendChild(txt); node.appendChild(del);
   node.addEventListener("click",()=>{
@@ -387,7 +821,220 @@ function makeNode(row,cat,b,onRemove){
   return node;
 }
 
-/* ---------- linking ---------- */
+/* =========================
+   Metadata UI
+   ========================= */
+function refreshMetaUI(){
+  $("#caseTitle").value = state.meta.caseTitle || "";
+  $("#mIncidentDate").value = state.meta.incidentDate || "";
+  $("#mAnalysisDate").value = state.meta.analysisDate || "";
+  $("#mLocation").value = state.meta.location || "";
+  $("#mIsAE").value = state.meta.isAE || "";
+  $("#mHarm").value = state.meta.harm || "";
+  $("#mMethod").value = state.meta.method || "";
+  const tw=$("#teamRows"); tw.innerHTML="";
+  state.meta.team.forEach((t,i)=>{
+    const row=document.createElement("div"); row.className="team-row";
+    const n=document.createElement("input"); n.placeholder="ชื่อ-สกุล"; n.value=t.name;
+    n.addEventListener("input", ()=>{ t.name=n.value; autosave(); });
+    const r=document.createElement("input"); r.placeholder="บทบาท / วิชาชีพ (เช่น แพทย์เวร ER)"; r.value=t.role;
+    r.addEventListener("input", ()=>{ t.role=r.value; autosave(); });
+    const d=document.createElement("button"); d.textContent="✕"; d.title="ลบ";
+    d.addEventListener("click", ()=>{
+      state.meta.team.splice(i,1);
+      if(!state.meta.team.length) state.meta.team.push(newTeam());
+      refreshMetaUI(); autosave();
+    });
+    row.append(n,r,d); tw.appendChild(row);
+  });
+}
+function refreshBoardMeta(){
+  $("#bTitle").textContent = state.meta.caseTitle || "";
+  const parts=[];
+  if(state.meta.incidentDate) parts.push("เกิดเหตุ: " + state.meta.incidentDate);
+  if(state.meta.location) parts.push(state.meta.location);
+  if(state.meta.harm) parts.push("Harm: " + state.meta.harm);
+  if(state.meta.method) parts.push("วิธี: " + (METHOD_INFO[state.meta.method]?.label || state.meta.method));
+  $("#bMeta").textContent = parts.join("  •  ");
+}
+$("#btnMeta").addEventListener("click", ()=>$("#metaPanel").classList.toggle("open"));
+$("#btnCloseMeta").addEventListener("click", ()=>$("#metaPanel").classList.remove("open"));
+$("#caseTitle").addEventListener("input", e=>{ state.meta.caseTitle=e.target.value; autosave(); refreshBoardMeta(); drawLinesSoon(); });
+$("#mIncidentDate").addEventListener("input", e=>{ state.meta.incidentDate=e.target.value; autosave(); refreshBoardMeta(); });
+$("#mAnalysisDate").addEventListener("input", e=>{ state.meta.analysisDate=e.target.value; autosave(); });
+$("#mLocation").addEventListener("input", e=>{ state.meta.location=e.target.value; autosave(); refreshBoardMeta(); });
+$("#mIsAE").addEventListener("change", e=>{ state.meta.isAE=e.target.value; autosave(); });
+$("#mHarm").addEventListener("change", e=>{ state.meta.harm=e.target.value; autosave(); refreshBoardMeta(); });
+$("#mMethod").addEventListener("change", e=>{ state.meta.method=e.target.value; autosave(); refreshBoardMeta(); });
+$("#btnAddTeam").addEventListener("click", ()=>{ state.meta.team.push(newTeam()); refreshMetaUI(); autosave(); });
+
+/* =========================
+   Method Wizard
+   ========================= */
+$("#btnWizard").addEventListener("click", ()=>{
+  $("#wSev").value=""; $("#wProb").value=""; $("#wResult").classList.remove("on");
+  $("#wApply").style.display="none";
+  $("#wizardModal").classList.add("open");
+});
+$("#btnCloseWiz").addEventListener("click", ()=>$("#wizardModal").classList.remove("open"));
+$("#wizardModal").addEventListener("click", e=>{ if(e.target.id==="wizardModal") $("#wizardModal").classList.remove("open"); });
+
+let wizardPick = null;
+function evalWizard(){
+  const s = $("#wSev").value, p = $("#wProb").value;
+  const r = pickMethod(s, p);
+  if(!r){ $("#wResult").classList.remove("on"); $("#wApply").style.display="none"; return; }
+  wizardPick = r.method;
+  const info = METHOD_INFO[r.method];
+  $("#wMethod").textContent = "→ แนะนำ: " + info.label;
+  $("#wScore").textContent = "Safety Assessment Score: " + r.score + (r.alt ? " (ทางเลือก: " + r.alt + ")" : "");
+  $("#wDesc").textContent = info.desc;
+  $("#wResult").classList.add("on");
+  $("#wApply").style.display="inline-block";
+}
+$("#wSev").addEventListener("change", evalWizard);
+$("#wProb").addEventListener("change", evalWizard);
+$("#wApply").addEventListener("click", ()=>{
+  if(!wizardPick) return;
+  state.meta.method = wizardPick;
+  $("#mMethod").value = wizardPick;
+  autosave(); refreshBoardMeta();
+  $("#wizardModal").classList.remove("open");
+  toast("บันทึกวิธี: " + (METHOD_INFO[wizardPick]?.label || wizardPick));
+});
+
+/* =========================
+   Guiding Questions modals
+   ========================= */
+function openCategoryQuestions(cat, row){
+  const qs = findQuestions(cat.name);
+  if(!qs){ toast("ไม่พบชุดคำถามสำหรับหมวดนี้"); return; }
+  $("#qTitle").textContent = "💡 " + qs.title;
+  $("#qSubtitle").textContent = qs.sub;
+  const wrap = $("#qContent"); wrap.innerHTML="";
+  const ul=document.createElement("ul"); ul.className="q-list";
+  qs.items.forEach(q=>{
+    const li=document.createElement("li");
+    const s=document.createElement("span"); s.textContent=q;
+    const btn=document.createElement("button"); btn.textContent="➕ เพิ่มเป็นกล่อง";
+    btn.addEventListener("click", ()=>{
+      cat.boxes.push({id:uid(), t:q});
+      autosave(); render();
+      toast("เพิ่มกล่องพร้อมคำถามแล้ว");
+    });
+    li.append(s,btn); ul.appendChild(li);
+  });
+  wrap.appendChild(ul);
+  $("#qModal").classList.add("open");
+}
+function openCMPHelper(row){
+  const cat = row.cats[0];
+  $("#qTitle").textContent = "💡 Care Management Problems (CMP)";
+  $("#qSubtitle").textContent = "ตัวอย่าง CMP ที่พบบ่อย + คำถามช่วยระบุ CMP (อ้างอิง London Protocol / อ.อนุวัฒน์)";
+  const wrap = $("#qContent"); wrap.innerHTML="";
+
+  const h1=document.createElement("h3"); h1.textContent="📌 ตัวอย่าง CMP ที่พบบ่อย"; wrap.appendChild(h1);
+  const ul1=document.createElement("ul"); ul1.className="q-list";
+  CMP_HELPER.examples.forEach(q=>{
+    const li=document.createElement("li");
+    const s=document.createElement("span"); s.textContent=q;
+    const btn=document.createElement("button"); btn.textContent="➕ ใช้เป็น CMP";
+    btn.addEventListener("click", ()=>{
+      cat.boxes.push({id:uid(), t:q});
+      autosave(); render();
+      toast("เพิ่ม CMP แล้ว");
+    });
+    li.append(s,btn); ul1.appendChild(li);
+  });
+  wrap.appendChild(ul1);
+
+  const h2=document.createElement("h3"); h2.textContent="🔍 คำถามช่วยค้นหา CMP"; wrap.appendChild(h2);
+  const ul2=document.createElement("ul"); ul2.className="q-list";
+  CMP_HELPER.questions.forEach(q=>{
+    const li=document.createElement("li");
+    const s=document.createElement("span"); s.textContent=q;
+    li.appendChild(s); ul2.appendChild(li);
+  });
+  wrap.appendChild(ul2);
+  $("#qModal").classList.add("open");
+}
+$("#btnCloseQ").addEventListener("click", ()=>$("#qModal").classList.remove("open"));
+$("#qModal").addEventListener("click", e=>{ if(e.target.id==="qModal") $("#qModal").classList.remove("open"); });
+
+/* =========================
+   Actions table
+   ========================= */
+function getCMPOptions(){
+  const rowB = state.rows.find(r=>r.id==="B");
+  if(!rowB) return [];
+  return rowB.cats[0].boxes.map(b => b.t.trim()).filter(Boolean);
+}
+function refreshActions(){
+  const tb = $("#actionRows"); tb.innerHTML="";
+  const cmps = getCMPOptions();
+  state.actions.forEach((a,i)=>{
+    const tr=document.createElement("tr");
+    tr.appendChild(td(String(i+1), null, true));
+    const cmpSel = document.createElement("select");
+    const optE = document.createElement("option"); optE.value=""; optE.textContent="— เลือก CMP —"; cmpSel.appendChild(optE);
+    cmps.forEach(c=>{ const o=document.createElement("option"); o.value=c; o.textContent=c; cmpSel.appendChild(o); });
+    // custom option
+    const optC = document.createElement("option"); optC.value="__custom__"; optC.textContent="🖉 อื่น ๆ (พิมพ์เอง)"; cmpSel.appendChild(optC);
+    if(a.cmp && !cmps.includes(a.cmp)) {
+      const o=document.createElement("option"); o.value=a.cmp; o.textContent=a.cmp; o.selected=true; cmpSel.appendChild(o);
+    } else {
+      cmpSel.value = a.cmp || "";
+    }
+    cmpSel.addEventListener("change", ()=>{
+      if(cmpSel.value==="__custom__"){
+        const v = prompt("พิมพ์ CMP ที่ต้องการอ้างถึง", a.cmp||"");
+        if(v!==null){ a.cmp=v; refreshActions(); autosave(); }
+        else cmpSel.value = a.cmp||"";
+      } else { a.cmp = cmpSel.value; autosave(); }
+    });
+    const tdCmp = document.createElement("td"); tdCmp.appendChild(cmpSel); tr.appendChild(tdCmp);
+
+    tr.appendChild(tdInput(a, "cause", "สาเหตุรากที่จะแก้"));
+    tr.appendChild(tdTextarea(a, "action", "เช่น จัดทำ checklist double-check ยา high-alert ก่อนจ่าย"));
+    tr.appendChild(tdInput(a, "owner", "เช่น หัวหน้าห้องยา"));
+    tr.appendChild(tdInput(a, "measure", "% compliance"));
+    tr.appendChild(tdInput(a, "timeline", "ธ.ค. 68"));
+
+    const tdDel = document.createElement("td");
+    const bd = document.createElement("button"); bd.className="del-row"; bd.textContent="✕"; bd.title="ลบมาตรการ";
+    bd.addEventListener("click", ()=>{
+      state.actions.splice(i,1);
+      if(!state.actions.length) state.actions.push(newAction());
+      refreshActions(); autosave();
+    });
+    tdDel.appendChild(bd); tr.appendChild(tdDel);
+
+    tb.appendChild(tr);
+  });
+}
+function td(text, cls, center){
+  const t=document.createElement("td"); t.textContent=text||"";
+  if(cls) t.className=cls;
+  if(center) t.style.textAlign="center";
+  return t;
+}
+function tdInput(obj, key, ph){
+  const t=document.createElement("td");
+  const inp=document.createElement("input"); inp.placeholder=ph||""; inp.value=obj[key]||"";
+  inp.addEventListener("input", ()=>{ obj[key]=inp.value; autosave(); });
+  t.appendChild(inp); return t;
+}
+function tdTextarea(obj, key, ph){
+  const t=document.createElement("td");
+  const ta=document.createElement("textarea"); ta.placeholder=ph||""; ta.value=obj[key]||"";
+  ta.addEventListener("input", ()=>{ obj[key]=ta.value; autosave(); });
+  t.appendChild(ta); return t;
+}
+$("#btnAddAction").addEventListener("click", ()=>{ state.actions.push(newAction()); refreshActions(); autosave(); });
+
+/* =========================
+   LINKS
+   ========================= */
 function handleLinkClick(node,id){
   if(!linkSrc){
     linkSrc=id; node.classList.add("link-src"); markPeers(id,true);
@@ -414,7 +1061,9 @@ function clearLinkSel(){
   linkSrc=null;
 }
 
-/* ---------- wires ---------- */
+/* =========================
+   WIRES
+   ========================= */
 let drawTimer;
 function drawLinesSoon(){ clearTimeout(drawTimer); drawTimer=setTimeout(drawLines,120); }
 function drawLines(){
@@ -449,21 +1098,34 @@ function drawLines(){
 }
 window.addEventListener("resize",drawLinesSoon);
 
-/* ---------- save / load ---------- */
+/* =========================
+   SAVE / LOAD
+   ========================= */
 let saveTimer;
 function autosave(){
   clearTimeout(saveTimer);
   saveTimer=setTimeout(()=>{ try{ localStorage.setItem(LSKEY,JSON.stringify(state)); }catch(e){} },500);
 }
+function migrate(s){
+  if(!s) return null;
+  if(!s.meta){
+    s.meta = {caseTitle:s.caseTitle||"", incidentDate:"", analysisDate:"", location:"",
+      isAE:"", harm:"", method:"", team:[newTeam()]};
+  }
+  if(!Array.isArray(s.meta.team) || !s.meta.team.length) s.meta.team = [newTeam()];
+  if(!Array.isArray(s.actions) || !s.actions.length) s.actions = [newAction()];
+  if(!Array.isArray(s.links)) s.links = [];
+  return s;
+}
 $("#btnSave").addEventListener("click",()=>{
   try{ localStorage.setItem(LSKEY,JSON.stringify(state)); toast("💾 บันทึกข้อมูลไว้ในเครื่องนี้แล้ว"); }
-  catch(e){ toast("ไม่สามารถบันทึกได้ (พื้นที่จัดเก็บของเบราว์เซอร์ไม่พร้อมใช้งาน)"); }
+  catch(e){ toast("ไม่สามารถบันทึกได้"); }
 });
 $("#btnLoad").addEventListener("click",()=>{
   let raw=null; try{ raw=localStorage.getItem(LSKEY); }catch(e){}
   if(!raw){ toast("ยังไม่มีข้อมูลที่บันทึกไว้ในเครื่องนี้"); return; }
   try{
-    const s=JSON.parse(raw);
+    const s=migrate(JSON.parse(raw));
     if(s&&Array.isArray(s.rows)){ state=s; clearLinkSel(); render(); toast("📂 โหลดข้อมูลล่าสุดแล้ว"); }
   }catch(e){ toast("ข้อมูลที่บันทึกไว้เสียหาย"); }
 });
@@ -471,17 +1133,14 @@ $("#btnReset").addEventListener("click",()=>{
   if(!confirm("ล้างข้อมูลทั้งหมดและเริ่มใหม่?")) return;
   state=defaultState(); clearLinkSel(); render(); autosave(); toast("ล้างทั้งหมดแล้ว");
 });
-$("#caseTitle").addEventListener("input",e=>{
-  state.caseTitle=e.target.value;
-  $("#boardCase").textContent=e.target.value;
-  autosave(); drawLinesSoon();
-});
 
-/* ---------- toolbar ---------- */
+/* =========================
+   TOOLBAR
+   ========================= */
 $("#btnLink").addEventListener("click",function(){
   linkMode=!linkMode;
   this.classList.toggle("link-on",linkMode);
-  this.textContent=linkMode?"🔗 กำลังเชื่อมโยง… (แตะเพื่อปิด)":"🔗 โหมดเชื่อมโยง";
+  this.textContent=linkMode?"🔗 กำลังเชื่อมโยง…":"🔗 โหมดเชื่อมโยง";
   clearLinkSel();
   if(selectedNode){ selectedNode.classList.remove("selected"); selectedNode=null; }
   if(linkMode) toast("แตะกล่อง 2 กล่องเพื่อเชื่อมเส้น • แตะคู่เดิมซ้ำเพื่อลบเส้น");
@@ -493,7 +1152,9 @@ $("#btnClearLines").addEventListener("click",()=>{
 });
 $("#btnPrint").addEventListener("click",()=>window.print());
 
-/* ---------- export: capture + deliver (works on any host) ---------- */
+/* =========================
+   EXPORT (PNG + PDF)
+   ========================= */
 let exportPayload=null;
 async function captureBoard(){
   if(document.fonts&&document.fonts.ready){ try{ await document.fonts.ready; }catch(e){} }
@@ -504,7 +1165,7 @@ async function captureBoard(){
   } finally { if(wasSel) wasSel.classList.add("selected"); }
 }
 function baseName(){
-  return "5tier-diagram"+(state.caseTitle?"-"+state.caseTitle.replace(/[\\/:*?"<>|\s]+/g,"_").slice(0,40):"");
+  return "5tier-rca"+(state.meta.caseTitle?"-"+state.meta.caseTitle.replace(/[\\/:*?"<>|\s]+/g,"_").slice(0,40):"");
 }
 async function deliver(blob,fname,dataUrl,isImage){
   if(downloadsNS){
@@ -550,17 +1211,17 @@ $("#exClose").addEventListener("click",()=>$("#exportModal").classList.remove("o
 $("#exportModal").addEventListener("click",e=>{ if(e.target.id==="exportModal") $("#exportModal").classList.remove("open"); });
 
 $("#btnPng").addEventListener("click",async()=>{
-  if(typeof html2canvas==="undefined"){ toast("โมดูลสร้างภาพยังโหลดไม่เสร็จ ลองอีกครั้ง"); return; }
+  if(typeof html2canvas==="undefined"){ toast("โมดูลสร้างภาพยังโหลดไม่เสร็จ"); return; }
   toast("กำลังสร้างภาพ PNG…");
   try{
     const canvas=await captureBoard();
     const blob=await new Promise(res=>canvas.toBlob(res,"image/png"));
     if(!blob) throw new Error("no blob");
     await deliver(blob, baseName()+".png", canvas.toDataURL("image/png"), true);
-  }catch(e){ toast("สร้างภาพไม่สำเร็จ ลองใช้ปุ่ม พิมพ์ แทน"); }
+  }catch(e){ toast("สร้างภาพไม่สำเร็จ"); }
 });
 $("#btnPdf").addEventListener("click",async()=>{
-  if(typeof html2canvas==="undefined"||!window.jspdf){ toast("โมดูลสร้าง PDF ยังโหลดไม่เสร็จ ลองอีกครั้ง"); return; }
+  if(typeof html2canvas==="undefined"||!window.jspdf){ toast("โมดูลสร้าง PDF ยังโหลดไม่เสร็จ"); return; }
   toast("กำลังสร้างไฟล์ PDF…");
   try{
     const canvas=await captureBoard();
@@ -582,10 +1243,10 @@ $("#btnPdf").addEventListener("click",async()=>{
     }
     const blob=pdf.output("blob");
     await deliver(blob, baseName()+".pdf", null, false);
-  }catch(e){ toast("สร้าง PDF ไม่สำเร็จ ลองใช้ปุ่ม พิมพ์ แทน"); }
+  }catch(e){ toast("สร้าง PDF ไม่สำเร็จ"); }
 });
 
-/* ---------- guide modal ---------- */
+/* Guide modal */
 $("#btnGuide").addEventListener("click",()=>$("#guideModal").classList.add("open"));
 $("#btnCloseGuide").addEventListener("click",()=>$("#guideModal").classList.remove("open"));
 $("#guideModal").addEventListener("click",e=>{ if(e.target.id==="guideModal") $("#guideModal").classList.remove("open"); });
@@ -596,10 +1257,12 @@ document.addEventListener("click",e=>{
   }
 });
 
-/* ---------- init ---------- */
+/* =========================
+   INIT
+   ========================= */
 (function init(){
   let raw=null; try{ raw=localStorage.getItem(LSKEY); }catch(e){}
-  if(raw){ try{ const s=JSON.parse(raw); if(s&&Array.isArray(s.rows)) state=s; }catch(e){} }
+  if(raw){ try{ const s=migrate(JSON.parse(raw)); if(s&&Array.isArray(s.rows)) state=s; }catch(e){} }
   render();
   setTimeout(drawLines,400);
   if(window.claude&&typeof window.claude.use==="function"){
