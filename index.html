@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>5-Tier Diagram Builder | เครื่องมือสร้างแผนผังวิเคราะห์ปัจจัยร่วม</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{
+  --bg:#f4f6f4; --panel:#ffffff; --text:#1f2a1f; --muted:#6b7a6b;
+  --border:#c9d4c9; --green:#3e7d3e; --green-dark:#2e5f2e; --green-soft:#eef5ee;
+  --danger:#c62828; --shadow:0 2px 8px rgba(20,40,20,.08);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#121712; --panel:#1c241c; --text:#e4ece4; --muted:#93a493;
+    --border:#334133; --shadow:0 2px 8px rgba(0,0,0,.45);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#121712; --panel:#1c241c; --text:#e4ece4; --muted:#93a493;
+  --border:#334133; --shadow:0 2px 8px rgba(0,0,0,.45);
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+body{
+  margin:0; background:var(--bg); color:var(--text);
+  font-family:'Sarabun','Noto Sans Thai',Tahoma,system-ui,sans-serif; font-size:15px;
+}
+header.app{padding:12px 14px 4px; text-align:center;}
+header.app h1{margin:0; font-size:1.1rem; font-weight:700;}
+header.app p{margin:3px 0 0; color:var(--muted); font-size:.8rem;}
+.guide-link{
+  display:inline-flex; align-items:center; gap:6px; margin-top:6px;
+  background:var(--green-soft); color:var(--green-dark); border:1px solid var(--green);
+  border-radius:999px; padding:3px 12px; font-size:.78rem; font-weight:600; cursor:pointer;
+  font-family:inherit;
+}
+.toolbar{
+  display:flex; flex-wrap:wrap; gap:8px; justify-content:center; align-items:center;
+  padding:8px 10px; position:sticky; top:0; z-index:30; background:var(--bg);
+  border-bottom:1px solid var(--border);
+}
+.toolbar input{
+  flex:1 1 260px; min-width:200px; font-family:inherit; font-size:.88rem;
+  padding:8px 12px; border-radius:10px; border:1px solid var(--border);
+  background:var(--panel); color:var(--text);
+}
+.toolbar button{
+  font-family:inherit; font-size:.82rem; font-weight:600;
+  padding:8px 12px; border-radius:10px; border:1px solid var(--border);
+  background:var(--panel); color:var(--text); cursor:pointer; box-shadow:var(--shadow);
+}
+.toolbar button:active{transform:scale(.97);}
+.toolbar button.primary{background:#2e7d32; border-color:#2e7d32; color:#fff;}
+.toolbar button.link-on{background:#7c3aed; border-color:#7c3aed; color:#fff;}
+.toolbar button.danger{color:var(--danger); border-color:var(--danger);}
+.tips{max-width:1100px; margin:0 auto; padding:6px 14px 8px; color:var(--muted); font-size:.75rem; line-height:1.6;}
+.board-scroll{overflow-x:auto; padding:0 8px 60px;}
+/* ---------- table board ---------- */
+#board{
+  position:relative; margin:0 auto; width:max-content; min-width:min(100%,680px); max-width:1100px;
+  background:#ffffff; color:#1f2a1f;
+  border:2px solid #111; 
+}
+#board .board-case{
+  text-align:center; font-weight:700; font-size:.95rem; padding:8px 10px;
+  border-bottom:2px solid #111; min-height:2.2em; color:#1f2a1f; background:#fff;
+}
+#board .board-case:empty{display:none;}
+#wires{position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:3;}
+.rowT{display:flex; border-bottom:2px solid #111; position:relative; z-index:2;}
+.rowT:last-child{border-bottom:none;}
+.rowT .label{
+  flex:0 0 118px; background:#ececec; border-right:2px solid #111;
+  display:flex; flex-direction:column; justify-content:center; padding:10px 6px;
+  text-align:center; position:relative;
+}
+.rowT .label .tname{font-weight:700; font-size:.82rem; line-height:1.3; outline:none;}
+.rowT .label .tsub{font-size:.7rem; color:#555; margin-top:2px; outline:none;}
+.rowT .label .letter{
+  position:absolute; left:8px; bottom:6px; font-weight:800; font-size:1.05rem; color:#111;
+}
+.rowT .cell{flex:1; display:flex; padding:10px;}
+/* categories inside a tier row */
+.cats{display:flex; flex:1; gap:0;}
+.cat{
+  flex:1; display:flex; flex-direction:column; gap:10px; padding:0 10px;
+  border-right:1.5px dashed #9db89d;
+}
+.cat:last-child{border-right:none;}
+.cat .cname{
+  font-weight:700; font-size:.85rem; color:#1f2a1f; outline:none; min-height:1.1em;
+  line-height:1.25;
+}
+/* boxes */
+.node{
+  position:relative; border:2px solid var(--green); border-radius:14px;
+  background:#fff; padding:9px 11px; font-size:.84rem; line-height:1.45;
+  cursor:text; min-height:52px; color:#1f2a1f;
+}
+.node .txt{outline:none; min-height:32px; white-space:pre-wrap; word-break:break-word;}
+.node .txt:empty::before{content:attr(data-ph); color:#9fb39f;}
+.node.selected{box-shadow:0 0 0 3px rgba(46,125,50,.35);}
+.node.link-src{box-shadow:0 0 0 3px rgba(124,58,237,.55);}
+.node.linked-peer{outline:2px dashed var(--danger); outline-offset:3px;}
+.node .del{
+  position:absolute; top:-10px; right:-10px; width:24px; height:24px;
+  border-radius:50%; border:none; background:var(--danger); color:#fff;
+  font-size:14px; line-height:1; cursor:pointer; display:none; z-index:5;
+}
+.node.selected .del{display:block;}
+.addbox{
+  align-self:flex-start; width:56px; height:44px; border-radius:12px;
+  border:2px dashed #6f9a6f; background:#f1f7f1; color:#2e5f2e;
+  font-size:20px; font-weight:700; cursor:pointer;
+}
+.addbox:hover{border-color:var(--green-dark);}
+/* row A: horizontal step flow with arrows */
+.flowA{display:flex; flex-wrap:wrap; align-items:center; gap:10px; flex:1;}
+.flowA .node{flex:0 1 200px; min-width:150px;}
+.flowA .arrow{color:#2e7d32; font-size:1.3rem; font-weight:800; flex:0 0 auto;}
+.flowA .addbox{align-self:center; width:52px; height:52px; border-radius:12px;}
+/* row B: vertical stack */
+.stackB{display:flex; flex-direction:column; gap:10px; flex:1;}
+#toast{
+  position:fixed; left:50%; bottom:22px; transform:translateX(-50%);
+  background:#111827; color:#fff; padding:9px 18px; border-radius:999px;
+  font-size:.82rem; opacity:0; transition:opacity .25s; z-index:100; pointer-events:none;
+  max-width:90vw; text-align:center;
+}
+#toast.show{opacity:.95;}
+.modal-bg{position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:60; display:none;
+  align-items:center; justify-content:center; padding:20px;}
+.modal-bg.open{display:flex;}
+.modal{background:var(--panel); border-radius:16px; max-width:480px; width:100%; padding:20px;
+  box-shadow:0 10px 40px rgba(0,0,0,.3); max-height:85vh; overflow:auto;}
+.modal h2{margin:0 0 10px; font-size:1rem;}
+.modal ul{margin:0 0 12px; padding-left:20px; font-size:.85rem; line-height:1.7;}
+.modal button{font-family:inherit; font-weight:600; padding:8px 18px; border-radius:10px;
+  border:none; background:#2e7d32; color:#fff; cursor:pointer;}
+@media print{
+  @page{size:A4 portrait; margin:8mm;}
+  body{background:#fff;}
+  header.app,.toolbar,.tips,#toast,.modal-bg{display:none !important;}
+  .board-scroll{overflow:visible; padding:0;}
+  #board{min-width:0; width:100%;}
+}
+@media (max-width:560px){
+  .rowT .label{flex-basis:96px; padding:8px 4px;}
+  .node{font-size:.8rem;}
+  .cat{padding:0 6px;}
+}
+</style>
+</head>
+<body>
+
+<header class="app">
+  <h1>เครื่องมือสร้างแผนผังวิเคราะห์ปัจจัยร่วม (5-Tier Diagram)</h1>
+  <p>แตะที่กล่องเพื่อพิมพ์ได้ทันที • เพิ่ม/ลบกล่องได้ทุกหมวด • ส่งออกเป็น PNG หรือพิมพ์/บันทึก PDF</p>
+  <button class="guide-link" id="btnGuide">📖 แนวทางทบทวน 5 Tier โดยละเอียด</button>
+</header>
+
+<div class="toolbar">
+  <input id="caseTitle" placeholder="ชื่อเคส / หัวข้อการวิเคราะห์ (เช่น RCA: ผู้ป่วย…)">
+  <button id="btnLink">🔗 โหมดเชื่อมโยง</button>
+  <button id="btnClearLines">🧹 ลบเส้นทั้งหมด</button>
+  <button id="btnPng" class="primary">⬇ บันทึก PNG</button>
+  <button id="btnPdf">📄 บันทึก PDF</button>
+  <button id="btnPrint">🖨 พิมพ์</button>
+  <button id="btnSave">💾 บันทึกข้อมูล</button>
+  <button id="btnLoad">📂 โหลดข้อมูล</button>
+  <button id="btnReset" class="danger">↺ ล้างทั้งหมด</button>
+</div>
+
+<div class="tips">
+  💡 แตะ/คลิกกล่องแล้วพิมพ์ได้ทันที (รองรับมือถือและแท็บเล็ต) • กดปุ่ม "+" ในแต่ละหมวดเพื่อเพิ่มกล่อง •
+  กดปุ่มแดงมุมกล่องที่เลือกไว้เพื่อลบ • คลิกชื่อหมวด/ชื่อ Tier เพื่อแก้ไขได้ •
+  <b>ลบเส้นทีละเส้น:</b> ในโหมดเชื่อมโยง แตะกล่องคู่เดิมที่มีเส้นอยู่แล้วซ้ำอีกครั้ง เส้นนั้นจะถูกลบทันที
+  (กล่องที่มีเส้นเชื่อมกับกล่องที่เลือกไว้จะขึ้นกรอบแดงประ)
+</div>
+
+<div class="board-scroll">
+  <div id="board">
+    <div class="board-case" id="boardCase"></div>
+    <svg id="wires"></svg>
+    <div id="rows"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<div class="modal-bg" id="guideModal">
+  <div class="modal">
+    <h2>📖 แนวทางทบทวน 5 Tier โดยละเอียด</h2>
+    <ul>
+      <li><b>A – Chronological of Events (กระบวนการดูแล):</b> เรียงลำดับขั้นตอน/เหตุการณ์การดูแลตามเวลา</li>
+      <li><b>B – Care Management Problems (ปัญหาในการดูแล):</b> ระบุจุดที่การดูแลเบี่ยงเบนจากมาตรฐาน</li>
+      <li><b>C – Contributing Factors 5 Tier:</b>
+        <br>• <b>1st Tier</b> — Personnel Factors / Patient Factors
+        <br>• <b>2nd Tier</b> — Task / Team
+        <br>• <b>3rd Tier</b> — Physical Environment / Equipment / Social Environment
+        <br>• <b>4th Tier</b> — Organization &amp; Management
+        <br>• <b>5th Tier</b> — Institutional Context (ปัจจัยภายนอกองค์กร)</li>
+    </ul>
+    <p style="font-size:.78rem;color:var(--muted)">ใช้โหมดเชื่อมโยงลากเส้นจากขั้นตอน → ปัญหา → ปัจจัยร่วมแต่ละ Tier เพื่อแสดงความเชื่อมโยงของการวิเคราะห์</p>
+    <div style="text-align:right"><button id="btnCloseGuide">ปิด</button></div>
+  </div>
+</div>
+
+<div class="modal-bg" id="exportModal">
+  <div class="modal" style="text-align:center">
+    <h2 id="exTitle" style="word-break:break-all">ส่งออกไฟล์</h2>
+    <img id="exImg" alt="ตัวอย่างภาพที่ส่งออก" style="max-width:100%;max-height:52vh;border:1px solid var(--border);border-radius:8px;display:none">
+    <p id="exHint" style="font-size:.8rem;color:var(--muted)"></p>
+    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+      <button id="exDl">⬇ ดาวน์โหลด</button>
+      <button id="exShare" style="background:#1565c0">📤 แชร์ไฟล์</button>
+      <button id="exClose" style="background:#666">ปิด</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+const LSKEY = "rca5tier-data-v2";
+function uid(){ return "b" + Math.random().toString(36).slice(2,9); }
+function box(){ return {id:uid(), t:""}; }
+
+/* rows are rendered top -> bottom in this order (5th tier on top, A at bottom) */
+const defaultState = () => ({
+  caseTitle: "",
+  rows: [
+    {id:"T5", kind:"cats", tier:"5th Tier", letter:"", ph:"พิมพ์ข้อความ",
+      cats:[{id:uid(), name:"Institutional Context", boxes:[box(),box()]}]},
+    {id:"T4", kind:"cats", tier:"4th Tier", letter:"", ph:"พิมพ์ข้อความ",
+      cats:[{id:uid(), name:"Organization & Management", boxes:[box(),box()]}]},
+    {id:"T3", kind:"cats", tier:"3rd Tier", letter:"", ph:"พิมพ์ข้อความ",
+      cats:[
+        {id:uid(), name:"Physical Environment", boxes:[box(),box()]},
+        {id:uid(), name:"Equipment", boxes:[box(),box()]},
+        {id:uid(), name:"Social Environment", boxes:[box(),box()]}
+      ]},
+    {id:"T2", kind:"cats", tier:"2nd Tier", letter:"", ph:"พิมพ์ข้อความ",
+      cats:[
+        {id:uid(), name:"Task", boxes:[box(),box(),box()]},
+        {id:uid(), name:"Team", boxes:[box(),box(),box()]}
+      ]},
+    {id:"T1", kind:"cats", tier:"1st Tier", letter:"C", ph:"พิมพ์ข้อความ",
+      cats:[
+        {id:uid(), name:"Personnel Factors", boxes:[box(),box(),box()]},
+        {id:uid(), name:"Patient Factors", boxes:[box(),box(),box()]}
+      ]},
+    {id:"B", kind:"stack", tier:"Care Management Problems", sub:"ปัญหาในการดูแล", letter:"B",
+      ph:"ระบุปัญหา / Problem", cats:[{id:uid(), name:"", boxes:[box()]}]},
+    {id:"A", kind:"flow", tier:"Chronological of Events", sub:"กระบวนการดูแล", letter:"A",
+      ph:"ขั้นตอน / Step", cats:[{id:uid(), name:"", boxes:[box(),box(),box()]}]}
+  ],
+  links: []
+});
+
+let state = defaultState();
+let linkMode=false, linkSrc=null, selectedNode=null;
+let downloadsNS = undefined;
+
+const $=s=>document.querySelector(s);
+const rowsEl=$("#rows"), wires=$("#wires"), board=$("#board");
+
+function toast(msg){
+  const t=$("#toast"); t.textContent=msg; t.classList.add("show");
+  clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove("show"),2600);
+}
+
+/* ---------- render ---------- */
+function render(){
+  rowsEl.innerHTML="";
+  state.rows.forEach(row=>{
+    const r=document.createElement("div"); r.className="rowT";
+
+    const label=document.createElement("div"); label.className="label";
+    const tn=document.createElement("div"); tn.className="tname"; tn.contentEditable="true";
+    tn.textContent=row.tier;
+    tn.addEventListener("input",()=>{ row.tier=tn.textContent; autosave(); });
+    label.appendChild(tn);
+    if(row.sub!==undefined){
+      const ts=document.createElement("div"); ts.className="tsub"; ts.contentEditable="true";
+      ts.textContent=row.sub;
+      ts.addEventListener("input",()=>{ row.sub=ts.textContent; autosave(); });
+      label.appendChild(ts);
+    }
+    if(row.letter){
+      const lt=document.createElement("div"); lt.className="letter"; lt.textContent=row.letter;
+      label.appendChild(lt);
+    }
+    r.appendChild(label);
+
+    const cell=document.createElement("div"); cell.className="cell";
+    if(row.kind==="flow"){
+      cell.appendChild(buildFlow(row));
+    } else if(row.kind==="stack"){
+      cell.appendChild(buildStack(row));
+    } else {
+      const cats=document.createElement("div"); cats.className="cats";
+      row.cats.forEach(cat=>cats.appendChild(buildCat(row,cat,true)));
+      cell.appendChild(cats);
+    }
+    r.appendChild(cell);
+    rowsEl.appendChild(r);
+  });
+  $("#caseTitle").value=state.caseTitle;
+  $("#boardCase").textContent=state.caseTitle;
+  drawLines();
+}
+
+function buildCat(row,cat,showName){
+  const c=document.createElement("div"); c.className="cat";
+  if(showName){
+    const nm=document.createElement("div"); nm.className="cname"; nm.contentEditable="true";
+    nm.textContent=cat.name;
+    nm.addEventListener("input",()=>{ cat.name=nm.textContent; autosave(); });
+    c.appendChild(nm);
+  }
+  cat.boxes.forEach(b=>c.appendChild(makeNode(row,cat,b)));
+  const add=addBtn(()=>{
+    const nb=box(); cat.boxes.push(nb);
+    c.insertBefore(makeNode(row,cat,nb),add);
+    autosave(); drawLinesSoon();
+  });
+  c.appendChild(add);
+  return c;
+}
+function buildStack(row){
+  const cat=row.cats[0];
+  const c=document.createElement("div"); c.className="stackB";
+  cat.boxes.forEach(b=>c.appendChild(makeNode(row,cat,b)));
+  const add=addBtn(()=>{
+    const nb=box(); cat.boxes.push(nb);
+    c.insertBefore(makeNode(row,cat,nb),add);
+    autosave(); drawLinesSoon();
+  });
+  c.appendChild(add);
+  return c;
+}
+function buildFlow(row){
+  const cat=row.cats[0];
+  const c=document.createElement("div"); c.className="flowA";
+  const rebuild=()=>{
+    c.innerHTML="";
+    cat.boxes.forEach((b,i)=>{
+      if(i>0){ const a=document.createElement("span"); a.className="arrow"; a.textContent="➜"; c.appendChild(a); }
+      c.appendChild(makeNode(row,cat,b,rebuild));
+    });
+    const add=addBtn(()=>{ cat.boxes.push(box()); rebuild(); autosave(); drawLinesSoon(); });
+    c.appendChild(add);
+    drawLinesSoon();
+  };
+  rebuild();
+  return c;
+}
+function addBtn(fn){
+  const b=document.createElement("button"); b.className="addbox"; b.textContent="+"; b.title="เพิ่มกล่อง";
+  b.addEventListener("click",fn);
+  return b;
+}
+
+function makeNode(row,cat,b,onRemove){
+  const node=document.createElement("div"); node.className="node"; node.dataset.id=b.id;
+  const txt=document.createElement("div"); txt.className="txt"; txt.contentEditable="true";
+  txt.dataset.ph=row.ph; txt.textContent=b.t;
+  txt.addEventListener("input",()=>{ b.t=txt.textContent; autosave(); drawLinesSoon(); });
+  const del=document.createElement("button"); del.className="del"; del.textContent="×"; del.title="ลบกล่องนี้";
+  del.addEventListener("click",ev=>{
+    ev.stopPropagation();
+    cat.boxes=cat.boxes.filter(x=>x.id!==b.id);
+    state.links=state.links.filter(l=>l.a!==b.id&&l.b!==b.id);
+    selectedNode=null;
+    if(onRemove){ onRemove(); } else { node.remove(); }
+    autosave(); drawLinesSoon();
+  });
+  node.appendChild(txt); node.appendChild(del);
+  node.addEventListener("click",()=>{
+    if(linkMode){ handleLinkClick(node,b.id); return; }
+    if(selectedNode&&selectedNode!==node) selectedNode.classList.remove("selected");
+    node.classList.add("selected"); selectedNode=node;
+  });
+  return node;
+}
+
+/* ---------- linking ---------- */
+function handleLinkClick(node,id){
+  if(!linkSrc){
+    linkSrc=id; node.classList.add("link-src"); markPeers(id,true);
+    toast("เลือกกล่องปลายทางเพื่อเชื่อมเส้น (แตะกล่องที่มีเส้นอยู่แล้วเพื่อลบเส้นนั้น)");
+    return;
+  }
+  if(linkSrc===id){ clearLinkSel(); return; }
+  const ix=state.links.findIndex(l=>(l.a===linkSrc&&l.b===id)||(l.a===id&&l.b===linkSrc));
+  if(ix>=0){ state.links.splice(ix,1); toast("ลบเส้นเชื่อมแล้ว"); }
+  else { state.links.push({a:linkSrc,b:id}); toast("เชื่อมเส้นแล้ว"); }
+  clearLinkSel(); autosave(); drawLines();
+}
+function markPeers(id,on){
+  state.links.forEach(l=>{
+    const other=l.a===id?l.b:(l.b===id?l.a:null);
+    if(!other) return;
+    const el=rowsEl.querySelector('[data-id="'+other+'"]');
+    if(el) el.classList.toggle("linked-peer",on);
+  });
+}
+function clearLinkSel(){
+  if(linkSrc) markPeers(linkSrc,false);
+  rowsEl.querySelectorAll(".link-src").forEach(e=>e.classList.remove("link-src"));
+  linkSrc=null;
+}
+
+/* ---------- wires ---------- */
+let drawTimer;
+function drawLinesSoon(){ clearTimeout(drawTimer); drawTimer=setTimeout(drawLines,120); }
+function drawLines(){
+  wires.setAttribute("width",board.scrollWidth);
+  wires.setAttribute("height",board.scrollHeight);
+  wires.innerHTML="";
+  const bRect=board.getBoundingClientRect();
+  state.links=state.links.filter(l=>
+    rowsEl.querySelector('[data-id="'+l.a+'"]')&&rowsEl.querySelector('[data-id="'+l.b+'"]'));
+  state.links.forEach(l=>{
+    const ea=rowsEl.querySelector('[data-id="'+l.a+'"]');
+    const eb=rowsEl.querySelector('[data-id="'+l.b+'"]');
+    const ra=ea.getBoundingClientRect(), rb=eb.getBoundingClientRect();
+    let x1=ra.left-bRect.left+ra.width/2, x2=rb.left-bRect.left+rb.width/2, y1,y2;
+    if(Math.abs(ra.top-rb.top)<10){
+      y1=ra.top-bRect.top+ra.height/2; y2=rb.top-bRect.top+rb.height/2;
+      x1=(ra.left<rb.left?ra.right:ra.left)-bRect.left;
+      x2=(ra.left<rb.left?rb.left:rb.right)-bRect.left;
+    } else if(ra.top<rb.top){ y1=ra.bottom-bRect.top; y2=rb.top-bRect.top; }
+    else { y1=ra.top-bRect.top; y2=rb.bottom-bRect.top; }
+    const p=document.createElementNS("http://www.w3.org/2000/svg","path");
+    const my=(y1+y2)/2;
+    p.setAttribute("d",`M ${x1} ${y1} C ${x1} ${my}, ${x2} ${my}, ${x2} ${y2}`);
+    p.setAttribute("fill","none"); p.setAttribute("stroke","#b3541e"); p.setAttribute("stroke-width","2.2");
+    wires.appendChild(p);
+    [[x1,y1],[x2,y2]].forEach(c=>{
+      const d=document.createElementNS("http://www.w3.org/2000/svg","circle");
+      d.setAttribute("cx",c[0]); d.setAttribute("cy",c[1]); d.setAttribute("r","3.5"); d.setAttribute("fill","#b3541e");
+      wires.appendChild(d);
+    });
+  });
+}
+window.addEventListener("resize",drawLinesSoon);
+
+/* ---------- save / load ---------- */
+let saveTimer;
+function autosave(){
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(()=>{ try{ localStorage.setItem(LSKEY,JSON.stringify(state)); }catch(e){} },500);
+}
+$("#btnSave").addEventListener("click",()=>{
+  try{ localStorage.setItem(LSKEY,JSON.stringify(state)); toast("💾 บันทึกข้อมูลไว้ในเครื่องนี้แล้ว"); }
+  catch(e){ toast("ไม่สามารถบันทึกได้ (พื้นที่จัดเก็บของเบราว์เซอร์ไม่พร้อมใช้งาน)"); }
+});
+$("#btnLoad").addEventListener("click",()=>{
+  let raw=null; try{ raw=localStorage.getItem(LSKEY); }catch(e){}
+  if(!raw){ toast("ยังไม่มีข้อมูลที่บันทึกไว้ในเครื่องนี้"); return; }
+  try{
+    const s=JSON.parse(raw);
+    if(s&&Array.isArray(s.rows)){ state=s; clearLinkSel(); render(); toast("📂 โหลดข้อมูลล่าสุดแล้ว"); }
+  }catch(e){ toast("ข้อมูลที่บันทึกไว้เสียหาย"); }
+});
+$("#btnReset").addEventListener("click",()=>{
+  if(!confirm("ล้างข้อมูลทั้งหมดและเริ่มใหม่?")) return;
+  state=defaultState(); clearLinkSel(); render(); autosave(); toast("ล้างทั้งหมดแล้ว");
+});
+$("#caseTitle").addEventListener("input",e=>{
+  state.caseTitle=e.target.value;
+  $("#boardCase").textContent=e.target.value;
+  autosave(); drawLinesSoon();
+});
+
+/* ---------- toolbar ---------- */
+$("#btnLink").addEventListener("click",function(){
+  linkMode=!linkMode;
+  this.classList.toggle("link-on",linkMode);
+  this.textContent=linkMode?"🔗 กำลังเชื่อมโยง… (แตะเพื่อปิด)":"🔗 โหมดเชื่อมโยง";
+  clearLinkSel();
+  if(selectedNode){ selectedNode.classList.remove("selected"); selectedNode=null; }
+  if(linkMode) toast("แตะกล่อง 2 กล่องเพื่อเชื่อมเส้น • แตะคู่เดิมซ้ำเพื่อลบเส้น");
+});
+$("#btnClearLines").addEventListener("click",()=>{
+  if(!state.links.length){ toast("ยังไม่มีเส้นเชื่อม"); return; }
+  if(!confirm("ลบเส้นเชื่อมทั้งหมด?")) return;
+  state.links=[]; clearLinkSel(); autosave(); drawLines(); toast("ลบเส้นทั้งหมดแล้ว");
+});
+$("#btnPrint").addEventListener("click",()=>window.print());
+
+/* ---------- export: capture + deliver (works on any host) ---------- */
+let exportPayload=null;
+async function captureBoard(){
+  if(document.fonts&&document.fonts.ready){ try{ await document.fonts.ready; }catch(e){} }
+  const wasSel=selectedNode; if(wasSel) wasSel.classList.remove("selected");
+  try{
+    return await html2canvas(board,{scale:2,backgroundColor:"#ffffff",useCORS:true,
+      windowWidth:board.scrollWidth+60});
+  } finally { if(wasSel) wasSel.classList.add("selected"); }
+}
+function baseName(){
+  return "5tier-diagram"+(state.caseTitle?"-"+state.caseTitle.replace(/[\\/:*?"<>|\s]+/g,"_").slice(0,40):"");
+}
+async function deliver(blob,fname,dataUrl,isImage){
+  if(downloadsNS){
+    try{ await downloadsNS.save({filename:fname,data:blob}); toast("⬇ บันทึกไฟล์แล้ว"); return; }
+    catch(err){ if(err&&err.code==="declined"){ toast("ยกเลิกการบันทึก"); return; } }
+  }
+  openExportModal(blob,fname,dataUrl,isImage);
+}
+function openExportModal(blob,fname,dataUrl,isImage){
+  exportPayload={blob,fname};
+  $("#exTitle").textContent=fname;
+  const img=$("#exImg");
+  if(isImage&&dataUrl){
+    img.src=dataUrl; img.style.display="inline-block";
+    $("#exHint").textContent="กด ⬇ ดาวน์โหลด • ถ้าดาวน์โหลดไม่ได้ (เช่นเปิดใน LINE/Facebook) ให้กดค้างที่รูปแล้วเลือก \u201cบันทึกรูปภาพ\u201d หรือกด 📤 แชร์ไฟล์";
+  } else {
+    img.style.display="none";
+    $("#exHint").textContent="กด ⬇ ดาวน์โหลด หรือ 📤 แชร์ไฟล์ เพื่อบันทึก PDF";
+  }
+  let canShare=false;
+  try{ canShare=!!(navigator.canShare&&window.File&&navigator.canShare({files:[new File([blob],fname,{type:blob.type})]})); }catch(e){}
+  $("#exShare").style.display=canShare?"inline-block":"none";
+  $("#exportModal").classList.add("open");
+}
+$("#exDl").addEventListener("click",()=>{
+  if(!exportPayload) return;
+  try{
+    const a=document.createElement("a");
+    a.href=URL.createObjectURL(exportPayload.blob); a.download=exportPayload.fname;
+    document.body.appendChild(a); a.click();
+    setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },4000);
+    toast("⬇ เริ่มดาวน์โหลดแล้ว");
+  }catch(e){ toast("ดาวน์โหลดไม่สำเร็จ ลองกดค้างที่รูป หรือใช้ปุ่มแชร์"); }
+});
+$("#exShare").addEventListener("click",async()=>{
+  if(!exportPayload) return;
+  try{
+    const f=new File([exportPayload.blob],exportPayload.fname,{type:exportPayload.blob.type});
+    await navigator.share({files:[f],title:exportPayload.fname});
+  }catch(e){}
+});
+$("#exClose").addEventListener("click",()=>$("#exportModal").classList.remove("open"));
+$("#exportModal").addEventListener("click",e=>{ if(e.target.id==="exportModal") $("#exportModal").classList.remove("open"); });
+
+$("#btnPng").addEventListener("click",async()=>{
+  if(typeof html2canvas==="undefined"){ toast("โมดูลสร้างภาพยังโหลดไม่เสร็จ ลองอีกครั้ง"); return; }
+  toast("กำลังสร้างภาพ PNG…");
+  try{
+    const canvas=await captureBoard();
+    const blob=await new Promise(res=>canvas.toBlob(res,"image/png"));
+    if(!blob) throw new Error("no blob");
+    await deliver(blob, baseName()+".png", canvas.toDataURL("image/png"), true);
+  }catch(e){ toast("สร้างภาพไม่สำเร็จ ลองใช้ปุ่ม พิมพ์ แทน"); }
+});
+$("#btnPdf").addEventListener("click",async()=>{
+  if(typeof html2canvas==="undefined"||!window.jspdf){ toast("โมดูลสร้าง PDF ยังโหลดไม่เสร็จ ลองอีกครั้ง"); return; }
+  toast("กำลังสร้างไฟล์ PDF…");
+  try{
+    const canvas=await captureBoard();
+    const pdf=new window.jspdf.jsPDF({unit:"pt",format:"a4",
+      orientation: canvas.width>canvas.height?"landscape":"portrait"});
+    const pw=pdf.internal.pageSize.getWidth(), ph=pdf.internal.pageSize.getHeight();
+    const margin=20, availW=pw-margin*2, availH=ph-margin*2;
+    const scale=availW/canvas.width;
+    const pageHpx=Math.floor(availH/scale);
+    let y=0, first=true;
+    while(y<canvas.height){
+      const sliceH=Math.min(pageHpx,canvas.height-y);
+      const tmp=document.createElement("canvas");
+      tmp.width=canvas.width; tmp.height=sliceH;
+      tmp.getContext("2d").drawImage(canvas,0,y,canvas.width,sliceH,0,0,canvas.width,sliceH);
+      if(!first) pdf.addPage();
+      pdf.addImage(tmp.toDataURL("image/png"),"PNG",margin,margin,availW,sliceH*scale);
+      first=false; y+=sliceH;
+    }
+    const blob=pdf.output("blob");
+    await deliver(blob, baseName()+".pdf", null, false);
+  }catch(e){ toast("สร้าง PDF ไม่สำเร็จ ลองใช้ปุ่ม พิมพ์ แทน"); }
+});
+
+/* ---------- guide modal ---------- */
+$("#btnGuide").addEventListener("click",()=>$("#guideModal").classList.add("open"));
+$("#btnCloseGuide").addEventListener("click",()=>$("#guideModal").classList.remove("open"));
+$("#guideModal").addEventListener("click",e=>{ if(e.target.id==="guideModal") $("#guideModal").classList.remove("open"); });
+
+document.addEventListener("click",e=>{
+  if(!e.target.closest(".node")&&!e.target.closest(".toolbar")&&selectedNode){
+    selectedNode.classList.remove("selected"); selectedNode=null;
+  }
+});
+
+/* ---------- init ---------- */
+(function init(){
+  let raw=null; try{ raw=localStorage.getItem(LSKEY); }catch(e){}
+  if(raw){ try{ const s=JSON.parse(raw); if(s&&Array.isArray(s.rows)) state=s; }catch(e){} }
+  render();
+  setTimeout(drawLines,400);
+  if(window.claude&&typeof window.claude.use==="function"){
+    window.claude.use("downloads").then(ns=>{ downloadsNS=ns||null; }).catch(()=>{ downloadsNS=null; });
+  } else downloadsNS=null;
+  if(document.fonts&&document.fonts.ready) document.fonts.ready.then(drawLinesSoon);
+})();
+</script>
+</body>
+</html>
