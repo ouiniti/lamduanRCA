@@ -92,6 +92,34 @@ header.app p{margin:3px 0 0; color:var(--muted); font-size:.8rem;}
 .rowT .label .letter{position:absolute; left:8px; bottom:6px; font-weight:800; font-size:1.05rem; color:#111;}
 .rowT .label .qbtn{position:absolute; right:6px; top:6px; background:#fff3c4; border:1px solid #d4a017;
   color:#7a5a00; border-radius:999px; padding:2px 6px; font-size:.65rem; cursor:pointer; line-height:1.2;}
+.rowT .label .ibtn{position:absolute; left:4px; top:4px;
+  background:#e3f2fd; border:1px solid #1565c0; color:#1565c0;
+  border-radius:999px; padding:1px 6px; font-size:.7rem; cursor:pointer; line-height:1.2;
+  font-family:inherit;}
+.rowT .label .ibtn:hover{background:#1565c0; color:#fff;}
+.tier-balloon{position:absolute; left:132px; top:6px;
+  background:#fff; color:#1f2a1f;
+  border:2px solid #1565c0; border-radius:12px;
+  padding:12px 30px 12px 14px;
+  max-width:380px; min-width:240px;
+  z-index:40; box-shadow:0 6px 24px rgba(0,0,0,.22);
+  font-size:.8rem; line-height:1.55;}
+.tier-balloon::before{content:""; position:absolute; left:-10px; top:16px;
+  width:0; height:0; border:10px solid transparent; border-right-color:#1565c0;}
+.tier-balloon .b-title{font-weight:700; font-size:.9rem; color:#1565c0; margin:0 0 4px;}
+.tier-balloon .b-sum{color:#37474f; margin-bottom:8px;}
+.tier-balloon ul{margin:0 0 8px 0; padding-left:18px;}
+.tier-balloon ul li{margin-bottom:3px;}
+.tier-balloon .b-ex{background:#f5f5f5; padding:6px 8px; border-radius:6px;
+  font-size:.75rem; color:#555;}
+.tier-balloon .b-close{position:absolute; right:4px; top:4px;
+  background:transparent; border:none; color:#888; cursor:pointer;
+  font-size:1.05rem; line-height:1; padding:4px 8px; font-family:inherit;}
+@media (max-width:640px){
+  .tier-balloon{position:fixed; left:12px; right:12px; top:auto; bottom:12px;
+    max-width:none; min-width:0; max-height:65vh; overflow:auto;}
+  .tier-balloon::before{display:none;}
+}
 .rowT .cell{flex:1; display:flex; padding:10px;}
 .cats{display:flex; flex:1; gap:0;}
 .cat{flex:1; display:flex; flex-direction:column; gap:10px; padding:0 10px;
@@ -182,10 +210,32 @@ header.app p{margin:3px 0 0; color:var(--muted); font-size:.8rem;}
 .wiz-result .rmethod{font-size:1.15rem; font-weight:700; color:var(--green-dark);}
 .wiz-result .rscore{font-size:.8rem; color:var(--muted); margin-top:4px;}
 .wiz-result .rdesc{font-size:.82rem; margin-top:8px; line-height:1.55;}
+/* ---------- tier info balloon ---------- */
+.ibtn{position:absolute; top:4px; left:4px; background:#e3f2fd; border:1px solid #1565c0;
+  color:#0d47a1; border-radius:999px; padding:1px 6px; font-size:.68rem; cursor:pointer;
+  font-family:inherit; line-height:1.2; z-index:4;}
+.ibtn:hover{background:#bbdefb;}
+.tier-pop{position:fixed; z-index:70; background:var(--panel); color:var(--text);
+  border:2px solid var(--info); border-radius:14px; padding:14px 16px 16px;
+  max-width:360px; width:calc(100vw - 24px);
+  box-shadow:0 10px 40px rgba(0,0,0,.35); display:none; font-size:.85rem; line-height:1.55;}
+.tier-pop.open{display:block;}
+.tier-pop h3{margin:0 0 6px; font-size:.95rem; color:var(--info);
+  display:flex; justify-content:space-between; align-items:center; gap:8px;}
+.tier-pop h3 button{background:transparent; border:none; color:var(--muted); cursor:pointer;
+  font-size:1.05rem; padding:0 4px; line-height:1;}
+.tier-pop .tp-sub{font-size:.78rem; color:var(--muted); margin:0 0 6px;}
+.tier-pop ul{margin:6px 0 0; padding-left:18px; font-size:.8rem; line-height:1.6;}
+.tier-pop b{color:var(--green-dark);}
+.tier-pop .tp-ex{margin-top:10px; padding:8px 10px; background:var(--green-soft);
+  border-radius:8px; font-size:.78rem; border-left:3px solid var(--green);}
+.tier-pop .tp-cats{margin-top:8px; display:flex; flex-wrap:wrap; gap:4px;}
+.tier-pop .tp-cats span{background:#fff3c4; color:#7a5a00; border:1px solid #d4a017;
+  border-radius:999px; padding:2px 8px; font-size:.7rem; font-weight:600;}
 @media print{
   @page{size:A4 portrait; margin:8mm;}
   body{background:#fff;}
-  header.app,.toolbar,.tips,.meta-panel,#toast,.modal-bg{display:none !important;}
+  header.app,.toolbar,.tips,.meta-panel,#toast,.modal-bg,.ibtn,.tier-balloon{display:none !important;}
   .board-scroll,.actions-section{overflow:visible; padding:0;}
   .actions-section{border:none; box-shadow:none; page-break-before:always;}
   #board{min-width:0; width:100%;}
@@ -302,6 +352,11 @@ header.app p{margin:3px 0 0; color:var(--muted); font-size:.8rem;}
     </table>
   </div>
   <button id="btnAddAction">+ เพิ่มมาตรการ</button>
+</div>
+
+<div class="tier-pop" id="tierPop" role="dialog">
+  <h3><span class="tp-title"></span><button id="btnClosePop" title="ปิด">✕</button></h3>
+  <div class="tp-body"></div>
 </div>
 
 <div id="toast"></div>
@@ -574,7 +629,176 @@ const CMP_HELPER = {
   ]
 };
 
-/* Safety Assessment Matrix: score by (severity, probability) */
+const TIER_GUIDE = {
+  A: {
+    title:"แถว A — Chronological of Events",
+    body:`
+      <div class="tp-sub">กระบวนการดูแล / ลำดับเหตุการณ์ตามเวลาจริง</div>
+      <div>ใส่แต่ละ step เรียงตามเวลา ตั้งแต่แรกรับจนถึงจุดเกิดเหตุ ทีละกล่อง ➜ ต่อกัน</div>
+      <ul>
+        <li><b>ขั้นตอนทั่วไป:</b> Assess → Diagnosis → Plan → Care → Educate → Discharge</li>
+        <li>ใส่เวลาจริงถ้าทราบ (เช่น "08:30 triage ESI 3")</li>
+        <li>ยิ่งละเอียดยิ่งดี — จุดเปลี่ยนอยู่ในรายละเอียด</li>
+        <li>ปรับปรุงลำดับเมื่อได้ข้อมูลเพิ่มจากการสัมภาษณ์</li>
+      </ul>
+      <div class="tp-ex">ตัวอย่าง: 08:15 มา ER • 08:30 triage • 09:00 พบแพทย์ • 09:45 order EKG • 10:15 diagnosis STEMI</div>
+    `
+  },
+  B: {
+    title:"แถว B — Care Management Problems (CMP)",
+    body:`
+      <div class="tp-sub">ปัญหาในการดูแล / Active Failure / Unsafe Act</div>
+      <div>ระบุ<b>การกระทำหรือการละเว้นการกระทำ</b>ในขั้นตอนย่อย ๆ ที่นำไปสู่ (หรือมีโอกาสนำไปสู่) เหตุการณ์ไม่พึงประสงค์</div>
+      <ul>
+        <li>ยึดหลัก <b>"ข้อเท็จจริงมาก่อน แล้วค่อยตีความ"</b></li>
+        <li>CMP แต่ละข้อจะมีสาเหตุเฉพาะของมันเอง (ให้สนใจแนวดิ่ง)</li>
+        <li>อย่าพยายามยุบรวมสาเหตุตามแนวราบ</li>
+        <li>กดปุ่ม <b>💡 CMP</b> เพื่อดูตัวอย่าง 13 ข้อ + คำถามช่วยระบุ</li>
+      </ul>
+      <div class="tp-ex">ตัวอย่าง: "ล่าช้าในการวินิจฉัย STEMI", "ไม่ได้ double-check ยา high-alert", "ไม่ปฏิบัติตาม protocol"</div>
+    `
+  },
+  T1: {
+    title:"Tier 1 — Individuals (บุคลากรและผู้ป่วย)",
+    body:`
+      <div class="tp-sub">ปัจจัยจากคนที่เกี่ยวข้องโดยตรง (ระดับหน้างานสุด)</div>
+      <div class="tp-cats"><span>Personnel Factors</span><span>Patient Factors</span></div>
+      <ul>
+        <li><b>Personnel:</b> ความรู้/ทักษะ/ประสบการณ์, ความอ่อนล้า, แรงจูงใจ, เจตคติ, cultural competency, sensory/physical capabilities</li>
+        <li><b>Patient:</b> สภาวะทางคลินิก, ยาเดิม, การแพ้, ปัจจัยสังคม/วัฒนธรรม, อารมณ์/จิตใจ, ภาษา, health literacy</li>
+        <li>ถาม <b>WHY?</b> อะไรของบุคคลที่เอื้อให้เกิด CMP</li>
+      </ul>
+      <div class="tp-ex">ตัวอย่าง: "แพทย์ intern ยังไม่ผ่าน STEMI training", "ผู้ป่วยพูดไทยไม่ชัด สื่อสารอาการผิด"</div>
+    `
+  },
+  T2: {
+    title:"Tier 2 — Work & Team (งานและทีม)",
+    body:`
+      <div class="tp-sub">ปัจจัยระดับหน้างานและการทำงานเป็นทีม</div>
+      <div class="tp-cats"><span>Task / Nature of Work</span><span>Team</span></div>
+      <ul>
+        <li><b>Task:</b> workflow ซับซ้อน, การขัดจังหวะ, competing tasks, ภาระ physical/cognitive, protocol/order set</li>
+        <li><b>Team:</b> การสื่อสาร, handover, briefing/debriefing, ขวัญกำลังใจ, บทบาทหน้าที่, team awareness</li>
+        <li>ถาม: จะปรับ workflow / การสื่อสาร / บทบาท อย่างไรเพื่อกัน unsafe act</li>
+      </ul>
+      <div class="tp-ex">ตัวอย่าง: "ไม่มี handover formal ตอนเปลี่ยนเวร", "พยาบาลใหม่ไม่กล้าถามหัวหน้าเมื่อเห็นความผิดปกติ"</div>
+    `
+  },
+  T3: {
+    title:"Tier 3 — Environment (สิ่งแวดล้อมการทำงาน)",
+    body:`
+      <div class="tp-sub">ปัจจัยระดับสิ่งแวดล้อม เครื่องมือ และการสื่อสารในหน่วยงาน</div>
+      <div class="tp-cats"><span>Physical Env</span><span>Equipment / HSI</span><span>Social Env / IEC</span></div>
+      <ul>
+        <li><b>Physical:</b> แสง, เสียง, อุณหภูมิ, layout, ความคับแคบ, distraction</li>
+        <li><b>Equipment / Human-System Interface:</b> การออกแบบเครื่องมือ, display/control, safety mechanism, back-up, บำรุงรักษา, visual/label</li>
+        <li><b>Social / IEC / Supervision:</b> การฝึกอบรม, ปฐมนิเทศ, supervision, การสื่อสารข้อมูล, protocol/CPG พร้อมใช้</li>
+      </ul>
+      <div class="tp-ex">ตัวอย่าง: "จุดวางเครื่อง EKG คับแคบ", "ไม่มีระบบ pop-up แจ้งเตือน STEMI ใน HIS", "ไม่มี buddy system เวรกลางคืน"</div>
+    `
+  },
+  T4: {
+    title:"Tier 4 — Management (บริหารและองค์กร)",
+    body:`
+      <div class="tp-sub">ปัจจัยระดับการบริหาร นโยบาย และองค์กรภายใน</div>
+      <div class="tp-cats"><span>Organizational Climate</span><span>Resource</span><span>Org. Process</span></div>
+      <ul>
+        <li><b>Climate:</b> โครงสร้าง, นโยบาย, วัฒนธรรม, safety/just culture, leadership involvement</li>
+        <li><b>Resource:</b> งบประมาณ, อัตรากำลัง, การจัดสรรทรัพยากร, priorities ของผู้บริหาร</li>
+        <li><b>Process:</b> policies & procedures, การตัดสินใจ, staff management, การสนับสนุนของหน่วยกลาง (เภสัช/MedTech/IT)</li>
+      </ul>
+      <div class="tp-ex">ตัวอย่าง: "ไม่มีนโยบาย fast-track STEMI ในโรงพยาบาล", "ภาระงานเวรกลางคืนสูง อัตรากำลังไม่พอ"</div>
+    `
+  },
+  T5: {
+    title:"Tier 5 — Institutional / External Environment",
+    body:`
+      <div class="tp-sub">ปัจจัยภายนอกองค์กร ระดับสังคม/ประเทศ/มาตรฐานวิชาชีพ</div>
+      <div class="tp-cats"><span>Societal</span><span>Policy & Regulation</span><span>Design</span><span>New Technology</span></div>
+      <ul>
+        <li><b>Societal:</b> ทัศนคติสังคม, public awareness, ค่านิยม</li>
+        <li><b>Policy & Regulation:</b> กฎหมาย, มาตรฐาน HA/สรพ., องค์กรวิชาชีพ, payors/สปสช., IT ระดับชาติ</li>
+        <li><b>Design & Technology:</b> การออกแบบเครื่องมือ/เวชภัณฑ์ในตลาด, เทคโนโลยีใหม่ที่ผู้ผลิตนำมาใช้</li>
+      </ul>
+      <div class="tp-ex">ตัวอย่าง: "CPG STEMI ระดับชาติยังไม่ update", "เครื่อง EKG รุ่นใหม่ interface ต่างจากเดิม ไม่ได้ฝึกใช้"</div>
+    `
+  }
+};
+
+
+/* Short balloon explanations per tier row */
+const TIER_TIPS = {
+  "A": {
+    title:"แถว A – Chronology of Events",
+    sum:"ลำดับขั้นตอนการดูแลตามเวลา (Assess → Dx → Plan → Care → Discharge)",
+    items:[
+      "เรียงตามเวลา ยิ่งละเอียดยิ่งดี ควรใส่เวลาจริงถ้าทำได้",
+      "แต่ละ step คือจุดที่ทีมทำ (หรือควรจะทำ) บางอย่าง",
+      "เป็นจุดเริ่มที่จะไปหา CMP (จุดเบี่ยงเบนจากมาตรฐาน)"
+    ],
+    ex:"รับผู้ป่วย → ซักประวัติ → EKG → ปรึกษาแพทย์ → วินิจฉัย → รักษา"
+  },
+  "B": {
+    title:"แถว B – Care Management Problems",
+    sum:"การกระทำ/ไม่กระทำ/ตัดสินใจ ในขั้นตอนที่ส่งผลให้เกิด adverse event",
+    items:[
+      "= Active Failure = Unsafe Act (คำใช้แทนกันได้)",
+      "แยกเป็นข้อย่อย ๆ ชัดเจน — แต่ละ CMP มีสาเหตุรากของตัวเอง",
+      "หาจากจุดเบี่ยงเบนจากมาตรฐาน / red flag ที่พลาด / จุดตัดสินใจต่างได้"
+    ],
+    ex:"ล่าช้าในการวินิจฉัย • ไม่ปรึกษา • ให้ยาผิด • ไม่ตรวจสอบก่อนหัตถการ"
+  },
+  "T1": {
+    title:"Tier 1 – Individuals (ตัวบุคคล)",
+    sum:"ตัวบุคคลที่เกี่ยวข้องกับเหตุการณ์โดยตรง",
+    items:[
+      "<b>Personnel/Staff:</b> ความรู้ ทักษะ ประสบการณ์ ความเหนื่อยล้า แรงจูงใจ เจตคติ",
+      "<b>Patient:</b> สภาวะทางคลินิก ยา แพ้ ภาษา วัฒนธรรม การรับข้อมูล"
+    ],
+    ex:"แพทย์ประจำบ้านเขียนคำสั่งผิด • ผู้ป่วยแพ้ยา • พยาบาลใหม่ไม่ปรึกษาพี่"
+  },
+  "T2": {
+    title:"Tier 2 – Work & Team (งาน + ทีม)",
+    sum:"ธรรมชาติของงานและการทำงานเป็นทีม",
+    items:[
+      "<b>Task/Nature of Work:</b> workflow, การขัดจังหวะ, multitasking, protocol, checklist",
+      "<b>Team:</b> การสื่อสาร, briefing/debriefing, handover, บทบาท, ขวัญกำลังใจ, team awareness"
+    ],
+    ex:"ไม่มีระบบคิว • สื่อสารในทีมไม่ชัดเจน • ไม่มี briefing • ระบบ buddy ไม่ work"
+  },
+  "T3": {
+    title:"Tier 3 – Environment (สิ่งแวดล้อม)",
+    sum:"สิ่งแวดล้อมและอุปกรณ์ที่ทำให้งานสำเร็จหรือล้มเหลว",
+    items:[
+      "<b>Physical:</b> layout, เสียง, แสง, พื้นที่, การเข้าถึง, อุณหภูมิ",
+      "<b>Equipment:</b> การออกแบบ, ป้ายเตือน, บำรุงรักษา, ระบบสำรอง, HIS/HSI",
+      "<b>Social/IEC:</b> การฝึกอบรม, supervision, ระบบสื่อสาร, visual cue"
+    ],
+    ex:"สถานที่ทำ EKG คับแคบ • เครื่องคนละยี่ห้อ • ไม่มีแนวปฏิบัติสำหรับ atypical case"
+  },
+  "T4": {
+    title:"Tier 4 – Management (ระดับองค์กร)",
+    sum:"ปัจจัยระดับองค์กร นโยบาย ทรัพยากร วัฒนธรรม การบริหาร",
+    items:[
+      "<b>Climate:</b> โครงสร้าง, นโยบาย, safety culture, just culture, psychological safety",
+      "<b>Resource:</b> อัตรากำลัง, งบประมาณ, ทรัพยากรที่ผู้บริหารควรให้ความสำคัญ",
+      "<b>Process:</b> การตัดสินใจ, กำกับติดตาม, สนับสนุนจากหน่วยกลาง, onboarding"
+    ],
+    ex:"การกำกับติดตามโดยผู้บริหารไม่พอ • ภาระงานมากในชั่วโมงเร่งด่วน • onboarding ไม่ครบ"
+  },
+  "T5": {
+    title:"Tier 5 – Institutional Context (ภายนอกองค์กร)",
+    sum:"ปัจจัยภายนอกองค์กรที่ควบคุมได้ยาก",
+    items:[
+      "<b>Societal:</b> การตระหนักของสังคม การเมือง เศรษฐกิจ",
+      "<b>Policy/Reg:</b> นโยบายชาติ, กฎหมาย, มาตรฐาน HA, องค์กรวิชาชีพ, ผู้จ่ายเงิน",
+      "<b>Design:</b> การออกแบบเครื่องมือ/เวชภัณฑ์ในตลาด",
+      "<b>New Tech:</b> เทคโนโลยีที่เพิ่งมาใหม่"
+    ],
+    ex:"องค์กรวิชาชีพยังไม่มี guideline • นโยบายชาติจำกัดการเข้าถึง • device standard ไม่ชัด"
+  }
+};
+
 const MATRIX = {
   cat:    {freq:3, fair:3, occ:3, infreq:3, rare:3},
   maj:    {freq:3, fair:3, occ:2, infreq:2, rare:2},
@@ -688,6 +912,40 @@ function findQuestions(catName){
 }
 
 /* =========================
+   Tier info balloon
+   ========================= */
+function showTierGuide(rowId, srcButton){
+  const info = TIER_GUIDE[rowId];
+  if(!info) return;
+  const pop = $("#tierPop");
+  pop.querySelector(".tp-title").textContent = info.title;
+  pop.querySelector(".tp-body").innerHTML = info.body;
+  pop.classList.add("open");
+  requestAnimationFrame(()=>{
+    const rect = srcButton.getBoundingClientRect();
+    const w = pop.offsetWidth, h = pop.offsetHeight;
+    const pad = 8, vw = window.innerWidth, vh = window.innerHeight;
+    let left = rect.right + pad;
+    if(left + w > vw - pad) left = rect.left - w - pad;
+    if(left < pad) left = Math.max(pad, (vw - w) / 2);
+    let top = rect.top;
+    if(top + h > vh - pad) top = Math.max(pad, vh - h - pad);
+    if(top < pad) top = pad;
+    pop.style.left = left + "px";
+    pop.style.top = top + "px";
+  });
+}
+$("#btnClosePop").addEventListener("click", ()=>$("#tierPop").classList.remove("open"));
+document.addEventListener("click", e=>{
+  const pop = $("#tierPop");
+  if(pop.classList.contains("open") && !e.target.closest("#tierPop") && !e.target.closest(".ibtn")){
+    pop.classList.remove("open");
+  }
+});
+window.addEventListener("resize", ()=>$("#tierPop").classList.remove("open"));
+window.addEventListener("scroll", ()=>$("#tierPop").classList.remove("open"), true);
+
+/* =========================
    RENDER
    ========================= */
 function render(){
@@ -696,6 +954,12 @@ function render(){
     const r=document.createElement("div"); r.className="rowT";
 
     const label=document.createElement("div"); label.className="label";
+    if(TIER_GUIDE[row.id]){
+      const ib=document.createElement("button"); ib.className="ibtn"; ib.textContent="ℹ️";
+      ib.title="ดูรายละเอียด Tier นี้";
+      ib.addEventListener("click", ev=>{ ev.stopPropagation(); showTierGuide(row.id, ib); });
+      label.appendChild(ib);
+    }
     const tn=document.createElement("div"); tn.className="tname"; tn.contentEditable="true";
     tn.textContent=row.tier;
     tn.addEventListener("input",()=>{ row.tier=tn.textContent; autosave(); refreshBoardMeta(); });
@@ -709,6 +973,13 @@ function render(){
     if(row.letter){
       const lt=document.createElement("div"); lt.className="letter"; lt.textContent=row.letter;
       label.appendChild(lt);
+    }
+    /* Info balloon button - explain what this row/tier is */
+    if(TIER_TIPS[row.id]){
+      const ib=document.createElement("button"); ib.className="ibtn"; ib.textContent="ℹ️";
+      ib.title="อธิบายสั้น ๆ ว่า tier นี้คืออะไร";
+      ib.addEventListener("click", ev=>{ ev.stopPropagation(); openTierTip(row, r, ib); });
+      label.appendChild(ib);
     }
     /* CMP row: 💡 button on label */
     if(row.id === "B"){
@@ -902,6 +1173,31 @@ $("#wApply").addEventListener("click", ()=>{
   $("#wizardModal").classList.remove("open");
   toast("บันทึกวิธี: " + (METHOD_INFO[wizardPick]?.label || wizardPick));
 });
+
+/* =========================
+   Tier info balloon
+   ========================= */
+let currentBalloon = null;
+function closeBalloon(){
+  if(currentBalloon){ currentBalloon.remove(); currentBalloon=null; }
+}
+function openTierTip(row, anchorRow, btn){
+  const already = currentBalloon;
+  closeBalloon();
+  if(already && already.dataset.row === row.id) return; /* toggle off */
+  const tip = TIER_TIPS[row.id]; if(!tip) return;
+  const el = document.createElement("div"); el.className = "tier-balloon"; el.dataset.row = row.id;
+  el.innerHTML =
+    '<button class="b-close" aria-label="ปิด">✕</button>'+
+    '<div class="b-title">'+tip.title+'</div>'+
+    '<div class="b-sum">'+tip.sum+'</div>'+
+    '<ul>'+tip.items.map(i=>'<li>'+i+'</li>').join('')+'</ul>'+
+    '<div class="b-ex"><b>ตัวอย่าง:</b> '+tip.ex+'</div>';
+  anchorRow.appendChild(el);
+  el.querySelector(".b-close").addEventListener("click", ev=>{ ev.stopPropagation(); closeBalloon(); });
+  el.addEventListener("click", ev=>ev.stopPropagation());
+  currentBalloon = el;
+}
 
 /* =========================
    Guiding Questions modals
@@ -1252,10 +1548,12 @@ $("#btnCloseGuide").addEventListener("click",()=>$("#guideModal").classList.remo
 $("#guideModal").addEventListener("click",e=>{ if(e.target.id==="guideModal") $("#guideModal").classList.remove("open"); });
 
 document.addEventListener("click",e=>{
+  if(!e.target.closest(".tier-balloon")&&!e.target.closest(".ibtn")) closeBalloon();
   if(!e.target.closest(".node")&&!e.target.closest(".toolbar")&&selectedNode){
     selectedNode.classList.remove("selected"); selectedNode=null;
   }
 });
+document.addEventListener("keydown", e=>{ if(e.key==="Escape") closeBalloon(); });
 
 /* =========================
    INIT
